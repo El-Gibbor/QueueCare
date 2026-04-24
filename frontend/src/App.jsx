@@ -6,6 +6,7 @@ import { RegisterPage } from '@/pages/RegisterPage';
 import { AppointmentsPage } from '@/pages/AppointmentsPage';
 import { AppointmentDetailPage } from '@/pages/AppointmentDetailPage';
 import { AppointmentFormPage } from '@/pages/AppointmentFormPage';
+import { QueuePage } from '@/pages/QueuePage';
 
 function ProtectedRoute({ children, allowedRoles }) {
   const { user } = useAuth();
@@ -16,15 +17,6 @@ function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/appointments" replace />;
   }
   return children;
-}
-
-function QueuePlaceholder() {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold text-civic-dark">Today&rsquo;s queue</h1>
-      <p className="mt-2 text-civic-muted">Queue UI arrives in chunk 4.</p>
-    </div>
-  );
 }
 
 export default function App() {
@@ -73,7 +65,7 @@ export default function App() {
             path="/queue"
             element={
               <ProtectedRoute allowedRoles={['staff', 'admin']}>
-                <QueuePlaceholder />
+                <QueuePage />
               </ProtectedRoute>
             }
           />
