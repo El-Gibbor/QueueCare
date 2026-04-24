@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 
 const authRoutes = require('./routes/auth.routes');
+const appointmentsRoutes = require('./routes/appointments.routes');
 
 const app = express();
 
@@ -13,6 +14,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/appointments', appointmentsRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });
