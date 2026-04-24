@@ -144,4 +144,43 @@ function cancel(req, res, next) {
   }
 }
 
-module.exports = { create, list, getOne, update, cancel };
+function serve(req, res, next) {
+  try {
+    const id = Number(req.params.id);
+    const existing = appointmentsService.findById(id);
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+
+    if (existing.status === 'served') {
+      return res.status(409).json({ error: 'Appointment is already served' });
+    }
+
+    if (existing.status === 'cancelled') {
+      return res
+        .status(409)
+        .json({ error: 'Cannot serve a cancelled appointment' });
+    }
+
+    appointmentsService.markServed(existing.id);
+    const appointment = appointmentsService.findById(existing.id);
+    return res.status(200).json({
+      message: 'Patient marked as served',
+      appointment,
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+function queueToday(req, res, next) {
+  try {
+    const today = appointmentsService.todayLocalDate();
+    return res.status(200).json(appointmentsService.findQueueForDate(today));
+  } catch (err) {
+    return next(err);
+  }
+}
+
+module.exports = { create, list, getOne, update, cancel, serve, queueToday };

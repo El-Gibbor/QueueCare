@@ -3,6 +3,7 @@ const cors = require('cors');
 
 const authRoutes = require('./routes/auth.routes');
 const appointmentsRoutes = require('./routes/appointments.routes');
+const queueRoutes = require('./routes/queue.routes');
 
 const app = express();
 
@@ -15,6 +16,7 @@ app.get('/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/appointments', appointmentsRoutes);
+app.use('/api/queue', queueRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });

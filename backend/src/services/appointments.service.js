@@ -47,6 +47,23 @@ const updateAppointmentStmt = db.prepare(
 const cancelStmt = db.prepare(
   `UPDATE appointments SET status = 'cancelled' WHERE id = ?`
 );
+const markServedStmt = db.prepare(
+  `UPDATE appointments SET status = 'served' WHERE id = ?`
+);
+const findQueueForDateStmt = db.prepare(
+  `SELECT a.*, u.name AS patientName
+   FROM appointments a
+   JOIN users u ON u.id = a.patientId
+   WHERE a.date = ? AND a.status != 'cancelled'
+   ORDER BY a.queueNumber`
+);
+
+// Local-date string (not toISOString) so "today" matches appointment.date written in local time.
+function todayLocalDate() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 function nextQueueNumber(date) {
   const { max } = maxQueueStmt.get(date);
@@ -94,6 +111,14 @@ function cancelAppointment(id) {
   cancelStmt.run(id);
 }
 
+function markServed(id) {
+  markServedStmt.run(id);
+}
+
+function findQueueForDate(date) {
+  return findQueueForDateStmt.all(date);
+}
+
 module.exports = {
   validateDate,
   hasActiveBookingOnDate,
@@ -102,4 +127,7 @@ module.exports = {
   findForUser,
   updateAppointment,
   cancelAppointment,
+  markServed,
+  findQueueForDate,
+  todayLocalDate,
 };
