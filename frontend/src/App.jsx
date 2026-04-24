@@ -3,6 +3,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { NavBar } from '@/components/NavBar';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
+import { AppointmentsPage } from '@/pages/AppointmentsPage';
+import { AppointmentDetailPage } from '@/pages/AppointmentDetailPage';
+import { AppointmentFormPage } from '@/pages/AppointmentFormPage';
 
 function ProtectedRoute({ children, allowedRoles }) {
   const { user } = useAuth();
@@ -13,15 +16,6 @@ function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/appointments" replace />;
   }
   return children;
-}
-
-function AppointmentsPlaceholder() {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold text-civic-dark">Appointments</h1>
-      <p className="mt-2 text-civic-muted">Appointments UI arrives in chunk 3.</p>
-    </div>
-  );
 }
 
 function QueuePlaceholder() {
@@ -46,10 +40,35 @@ export default function App() {
             path="/appointments"
             element={
               <ProtectedRoute>
-                <AppointmentsPlaceholder />
+                <AppointmentsPage />
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/appointments/new"
+            element={
+              <ProtectedRoute>
+                <AppointmentFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/appointments/:id"
+            element={
+              <ProtectedRoute>
+                <AppointmentDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/appointments/:id/edit"
+            element={
+              <ProtectedRoute>
+                <AppointmentFormPage />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/queue"
             element={
