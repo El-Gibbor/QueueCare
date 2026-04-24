@@ -15,7 +15,7 @@ export function AppointmentCard({ appointment, onCancel }) {
   return (
     <article
       data-cy={`appointment-card-${id}`}
-      className="rounded-md border border-civic-border bg-civic-surface p-4"
+      className="rounded-md border border-civic-border bg-civic-surface p-4 transition-shadow duration-200 hover:shadow-civic"
     >
       <header className="flex items-center justify-between">
         <span className="font-semibold text-civic-dark">{appointment.doctorName}</span>
