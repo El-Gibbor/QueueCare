@@ -1,0 +1,265 @@
+{
+  "info": {
+    "name": "QueueCare API",
+    "description": "QueueCare clinic appointment API.\n\n## Setup\n1. Start the backend: `cd backend && npm run dev` (default port 3000).\n2. In **Auth**, run **Register (Patient)** once, then **Login** — the login response's JWT is auto-saved into the `token` collection variable and every protected request uses it via `Authorization: Bearer {{token}}`.\n3. Run **Create Appointment** — the new ID is auto-saved into the `appointmentId` variable, so **Get / Update / Cancel / Serve** requests work without hand-copying.\n\n## Collection variables\n- `baseUrl` — defaults to `http://localhost:3000`.\n- `token` — populated by **Login**.\n- `userId` — populated by **Login** (handy if you want to assert scoping).\n- `appointmentId` — populated by **Create Appointment**.\n- `tomorrow` — auto-computed YYYY-MM-DD date one day ahead on every request (collection-level pre-request script), so the **Create Appointment** body never falls into the past.\n\n## Testing roles\nRegister a staff user via **Register (Staff)**, then **Login** with those creds (edit the login body). The `{{token}}` will now be a staff JWT, so **List (All)**, **Queue Today**, and **Mark as Served** will succeed while they'd 403 for a patient.\n\n## Notes\n- A patient can only see / update / cancel their own appointments; `GET /api/appointments/:id` for someone else's appointment returns 403.\n- Queue numbers are per calendar date. Cancelled appointments keep their queue number and are excluded from `/api/queue/today`.\n- `PATCH /api/appointments/:id/serve` and `GET /api/queue/today` are staff/admin only.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "userId", "value": "", "type": "string" },
+    { "key": "appointmentId", "value": "", "type": "string" },
+    { "key": "tomorrow", "value": "", "type": "string" }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Refresh {{tomorrow}} on every request so the Create Appointment body always has a valid future date.",
+          "const d = new Date();",
+          "d.setDate(d.getDate() + 1);",
+          "const pad = (n) => String(n).padStart(2, '0');",
+          "const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;",
+          "pm.collectionVariables.set('tomorrow', iso);"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register (Patient)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alice Patient\",\n  \"email\": \"alice@clinic.com\",\n  \"password\": \"password123\",\n  \"role\": \"patient\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Register (Staff)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sam Staff\",\n  \"email\": \"sam@clinic.com\",\n  \"password\": \"password123\",\n  \"role\": \"staff\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Save JWT and userId into collection variables so every protected request just uses {{token}}.",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('token', json.token);",
+                  "  if (json.user && json.user.id !== undefined) {",
+                  "    pm.collectionVariables.set('userId', String(json.user.id));",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alice@clinic.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Edit the body with whichever user you want to be — the `token` collection variable is overwritten with the returned JWT on a 200 response."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Appointments",
+      "item": [
+        {
+          "name": "Create Appointment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Save the created id so Get / Update / Cancel / Serve can reference it without hand-copying.",
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('appointmentId', String(pm.response.json().id));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorName\": \"Dr. Kwame Mensah\",\n  \"reason\": \"Annual checkup\",\n  \"date\": \"{{tomorrow}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "appointments"]
+            },
+            "description": "`{{tomorrow}}` is auto-computed by the collection-level pre-request script, so this body never falls in the past."
+          }
+        },
+        {
+          "name": "List Appointments",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "appointments"]
+            },
+            "description": "Patient token → only own appointments. Staff / admin token → all appointments."
+          }
+        },
+        {
+          "name": "Get Appointment by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "appointments", "{{appointmentId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Appointment",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Follow-up\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "appointments", "{{appointmentId}}"]
+            },
+            "description": "All fields are optional. Send any subset of doctorName / reason / date. Returns 409 if the appointment is already served or cancelled."
+          }
+        },
+        {
+          "name": "Cancel Appointment",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "appointments", "{{appointmentId}}"]
+            },
+            "description": "Soft-cancel: sets `status = 'cancelled'`. Calling again returns 409."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Queue (staff / admin)",
+      "item": [
+        {
+          "name": "Queue Today",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/queue/today",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "queue", "today"]
+            },
+            "description": "Staff / admin only. Returns today's non-cancelled appointments ordered by queueNumber, joined with `patientName`. 403 if called with a patient token."
+          }
+        },
+        {
+          "name": "Mark as Served",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/serve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "appointments", "{{appointmentId}}", "serve"]
+            },
+            "description": "Staff / admin only. 409 if the appointment is already served or cancelled; 403 if called with a patient token."
+          }
+        }
+      ]
+    }
+  ]
+}
