@@ -1,1 +1,9 @@
-// Entry point - loads env, imports app from ./app, calls app.listen.
+require('dotenv').config();
+
+const app = require('./app');
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`QueueCare backend listening on port ${PORT}`);
+});
