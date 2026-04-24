@@ -1,5 +1,5 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Home } from 'lucide-react';
+import { Hospital } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 const linkClass = ({ isActive }) =>
@@ -24,9 +24,9 @@ export function NavBar() {
         <Link
           to="/appointments"
           data-cy="nav_home"
-          className="flex items-center gap-2 font-bold text-civic-blue transition-colors duration-150 hover:brightness-95"
+          className="flex items-center gap-1.5 font-bold text-civic-blue transition-colors duration-150 hover:brightness-95"
         >
-          <Home size={20} aria-hidden="true" />
+          <Hospital size={20} aria-hidden="true" />
           <span>QueueCare</span>
         </Link>
         {user && (
