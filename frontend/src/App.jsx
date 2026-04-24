@@ -1,20 +1,67 @@
-// Placeholder shell — chunk 2 replaces this with the real router and pages.
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { NavBar } from '@/components/NavBar';
+import { LoginPage } from '@/pages/LoginPage';
+import { RegisterPage } from '@/pages/RegisterPage';
+
+function ProtectedRoute({ children, allowedRoles }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  // Role-gated routes (e.g. /queue) bounce to /appointments rather than /login
+  // so a logged-in patient isn't kicked back to the sign-in screen.
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/appointments" replace />;
+  }
+  return children;
+}
+
+function AppointmentsPlaceholder() {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold text-civic-dark">Appointments</h1>
+      <p className="mt-2 text-civic-muted">Appointments UI arrives in chunk 3.</p>
+    </div>
+  );
+}
+
+function QueuePlaceholder() {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold text-civic-dark">Today&rsquo;s queue</h1>
+      <p className="mt-2 text-civic-muted">Queue UI arrives in chunk 4.</p>
+    </div>
+  );
+}
+
 export default function App() {
   return (
-    <div className="min-h-screen">
-      <div className="mx-auto max-w-3xl px-4 py-12">
-        <h1 className="text-3xl font-bold text-civic-dark">QueueCare</h1>
-        <p className="mt-2 text-civic-muted">
-          Frontend scaffold online. Routing and pages arrive in chunk 2.
-        </p>
-        <div className="mt-6 rounded-md border border-civic-border bg-civic-surface p-4 shadow-civic">
-          <p className="text-sm text-civic-dark">
-            If this card renders with the Lexend font, a light page background,
-            and a subtle shadow, the token and typography pipelines are wired
-            correctly.
-          </p>
-        </div>
-      </div>
-    </div>
+    <BrowserRouter>
+      <NavBar />
+      <main className="mx-auto max-w-4xl px-4 py-8">
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+
+          <Route
+            path="/appointments"
+            element={
+              <ProtectedRoute>
+                <AppointmentsPlaceholder />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/queue"
+            element={
+              <ProtectedRoute allowedRoles={['staff', 'admin']}>
+                <QueuePlaceholder />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route path="*" element={<Navigate to="/appointments" replace />} />
+        </Routes>
+      </main>
+    </BrowserRouter>
   );
 }
