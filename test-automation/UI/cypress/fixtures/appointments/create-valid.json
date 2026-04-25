@@ -1,0 +1,11 @@
+{
+  "input": {
+    "doctorName": "Dr. Chiagoziem",
+    "reason": "QA Engineering medical consultation",
+    "time": "10:30"
+  },
+  "expected": {
+    "status": "scheduled",
+    "queueAssigned": true
+  }
+}
