@@ -1,7 +1,7 @@
 import { authPage } from '../../pageobjects/authPage';
 import { commonPage } from '../../pageobjects/commonPage';
 
-describe('Auth - Login', () => {
+describe('User Auth - Login', () => {
   let user;
 
   before(() => {
