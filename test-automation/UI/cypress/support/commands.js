@@ -20,6 +20,7 @@ Cypress.Commands.add('loginAs', (userRef) => {
         body: { email: user.email, password: user.password },
       })
       .then(({ body }) => {
+        // Seed the same keys AuthContext reads on init so the next visit loads as authenticated
         window.localStorage.setItem('qc_token', body.token);
         window.localStorage.setItem('qc_user', JSON.stringify(body.user));
       });

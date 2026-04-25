@@ -11,6 +11,7 @@ export const authPage = {
 
   fillCredentials({ email, password }) {
     if (email)    this.elements.email().clear().type(email);
+    // log: false keeps the password out of the Cypress command log
     if (password) this.elements.password().clear().type(password, { log: false });
   },
 

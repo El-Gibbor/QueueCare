@@ -34,6 +34,7 @@ describe('Auth - Login', () => {
   });
 
   it('does not navigate away when submitting an empty form', () => {
+    // Form uses noValidate, so the empty submission reaches the API and the 400 surfaces in login_error
     authPage.submit();
 
     commonPage.expectPath('/login');
