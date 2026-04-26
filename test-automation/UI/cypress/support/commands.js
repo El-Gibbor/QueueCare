@@ -10,6 +10,33 @@ Cypress.Commands.add('registerUserViaApi', (user) => {
   });
 });
 
+// fresh runtime-unique user, signs in via API, seeds the AuthContext keys,
+// and yields the resulting user. (for form-validation.cy.js, create and cancel appointment tests)
+Cypress.Commands.add('registerAndLoginUniqueUser', ({ role = 'patient' } = {}) => {
+  const ts = new Date().toISOString().slice(0, 23).replace(/[:.]/g, '-');
+  const user = {
+    name: `Cypress ${role} ${ts}`,
+    email: `${role}.${ts}@alustudent.com`,
+    password: 'userPass123!',
+    role,
+  };
+
+  return cy
+    .registerUserViaApi(user)
+    .then(() =>
+      cy.request({
+        method: 'POST',
+        url: `${apiUrl()}/api/auth/login`,
+        body: { email: user.email, password: user.password },
+      })
+    )
+    .then(({ body }) => {
+      window.localStorage.setItem('qc_token', body.token);
+      window.localStorage.setItem('qc_user', JSON.stringify(body.user));
+      return cy.wrap({ ...user, id: body.user.id });
+    });
+});
+
 // Seeds a scheduled appointment for the currently logged-in user
 Cypress.Commands.add('createAppointmentViaApi', (overrides = {}) => {
   const d = new Date();

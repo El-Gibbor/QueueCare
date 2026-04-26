@@ -8,14 +8,11 @@ describe('Appointments - Form validation', () => {
     cy.fixture('appointments/create-invalid').then((data) => {
       invalid = data;
     });
-    cy.fixture('auth/users').then((users) => {
-      cy.registerUserViaApi(users.patient_default);
-    });
   });
 
   beforeEach(() => {
     cy.clearLocalStorage();
-    cy.loginAs('patient_default');
+    cy.registerAndLoginUniqueUser();
     appointmentFormPage.visitNew();
   });
 

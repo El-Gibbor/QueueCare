@@ -2,15 +2,9 @@ import { appointmentListPage } from '../../pageobjects/appointmentListPage';
 import { confirmDialogPage } from '../../pageobjects/confirmDialogPage';
 
 describe('Appointments - Cancel', () => {
-  before(() => {
-    cy.fixture('auth/users').then((users) => {
-      cy.registerUserViaApi(users.patient_default);
-    });
-  });
-
   beforeEach(() => {
     cy.clearLocalStorage();
-    cy.loginAs('patient_default');
+    cy.registerAndLoginUniqueUser();
   });
 
   it('cancels a scheduled appointment through the confirm dialog', () => {

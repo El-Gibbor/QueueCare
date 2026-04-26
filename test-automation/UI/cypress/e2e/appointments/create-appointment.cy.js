@@ -16,14 +16,11 @@ describe('Appointments - Create', () => {
     cy.fixture('appointments/create-valid').then((data) => {
       createValid = data;
     });
-    cy.fixture('auth/users').then((users) => {
-      cy.registerUserViaApi(users.patient_default);
-    });
   });
 
   beforeEach(() => {
     cy.clearLocalStorage();
-    cy.loginAs('patient_default');
+    cy.registerAndLoginUniqueUser();
     appointmentFormPage.visitNew();
   });
 
