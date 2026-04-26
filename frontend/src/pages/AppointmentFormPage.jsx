@@ -4,7 +4,7 @@ import { TextField } from '@/components/TextField';
 import { TextArea } from '@/components/TextArea';
 import { DateInput } from '@/components/DateInput';
 import { Button } from '@/components/Button';
-import { getKeyName } from '@/utils/cy';
+import { getKeyName, cyReplaceSpecial } from '@/utils/cy';
 import {
   createAppointment,
   updateAppointment,
@@ -94,7 +94,14 @@ export function AppointmentFormPage() {
           onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
           required
         />
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <p
+            data-cy={cyReplaceSpecial('appointmentForm_error')}
+            className="text-sm text-red-600"
+          >
+            {error}
+          </p>
+        )}
         <div className="flex gap-3">
           <Button
             keyName="appointmentForm_submit_button"
