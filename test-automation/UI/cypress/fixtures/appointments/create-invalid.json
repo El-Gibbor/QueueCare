@@ -1,0 +1,8 @@
+{
+  "pastDate": "2020-01-01",
+  "input": {
+    "doctorName": "Dr. Eke",
+    "reason": "Regular Checkup - but with past date \n",
+    "time": "09:00"
+  }
+}

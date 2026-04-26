@@ -8,6 +8,7 @@ export const appointmentFormPage = {
     reason: () => cy.get('[data-cy="appointmentForm_TextArea_reason"]'),
     submit: () => cy.get('[data-cy="appointmentForm_submit_button"]'),
     cancel: () => cy.get('[data-cy="appointmentForm_cancel_button"]'),
+    error: () => cy.get('[data-cy="appointmentForm_error"]'),
   },
 
   fillForm({ doctorName, date, time, reason }) {
