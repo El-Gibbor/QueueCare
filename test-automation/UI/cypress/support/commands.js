@@ -60,6 +60,19 @@ Cypress.Commands.add('createAppointmentViaApi', (overrides = {}) => {
     .then(({ body }) => body);
 });
 
+// Registers a fresh patient and books a today-dated appointment; returns the created appointment record
+Cypress.Commands.add('seedTodaysAppointmentAsNewPatient', (reasonSuffix = '') => {
+  const today = new Date().toISOString().slice(0, 10);
+  return cy
+    .registerAndLoginUniqueUser({ role: 'patient' })
+    .then(() =>
+      cy.createAppointmentViaApi({
+        date: today,
+        reason: `Queue test ${reasonSuffix}`.trim(),
+      })
+    );
+});
+
 Cypress.Commands.add('loginAs', (userRef) => {
   cy.fixture('auth/users').then((users) => {
     const user = users[userRef];
