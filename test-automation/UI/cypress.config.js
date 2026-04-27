@@ -11,5 +11,6 @@ module.exports = defineConfig({
       apiUrl: 'http://localhost:3000',
     },
     setupNodeEvents() {},
+    experimentalRunAllSpecs: true,
   },
 });
