@@ -1,0 +1,2324 @@
+{
+  "info": {
+    "_postman_id": "9f425e91-380d-47a1-909b-5256adfa37dc",
+    "name": "QueueCare API Tests",
+    "description": "# QueueCare API Test Suite\n\n## Overview\n\nSelf-contained automated test suite for the QueueCare REST API. The API exposes two primary resource domains - **Authentication** (`/api/auth`) and **Appointments** (`/api/appointments`) - and enforces a two-role access model: `patient` and `staff`.\n\nThe collection is structured into four numbered sub-folders that must be executed in sequence when run as a full suite, but each folder may also be executed in isolation thanks to idempotent folder-level pre-request seed scripts.\n\n---\n\n## Environment Requirement\n\nThis collection requires the **QueueCare API** Postman environment to be imported and selected before any requests are sent.\n\n### Importing the Environment\n\n1. Open Postman and click the **Import** button in the top-left area of the application. Select the file `QueueCare_postman_environment.json`. Postman will import it as an environment, not as a collection.\n    \n2. To confirm the import was successful, open the **Environments** section in the left sidebar. The environment named **QueueCare API** should appear in the list. You may click it to inspect the `baseUrl` variable and update its value if needed.\n    \n3. To activate the environment, locate the **Environment selector** dropdown in the top-right corner of the Postman window. It typically reads **No Environment** when nothing is selected. Click it and choose **QueueCare API** from the list.\n    \n4. The `{{baseUrl}}` variable will now resolve correctly in all collection requests. You can verify this by hovering over any `{{baseUrl}}` reference in a request URL, which should display the resolved value `http://localhost:3000`.\n    \n\nThe environment supplies a single variable:\n\n| Variable | Default Value | Purpose |\n| --- | --- | --- |\n| `baseUrl` | `http://localhost:3000` | The root URL of the running QueueCare server. Update this value if your server runs on a different host or port before executing any requests. |\n\n---\n\n## Running the Collection\n\n### Postman Collection Runner (GUI)\n\n1. Ensure the QueueCare server is running and the **QueueCare API** environment is selected.\n    \n2. Right-click the collection name in the sidebar and choose **Run collection**.\n    \n3. In the Collection Runner, confirm that all four folders are included and that the run order matches the numbered folder sequence (01 through 99).\n    \n4. Click **Run QueueCare API Tests**.\n    \n5. Results appear inline in the runner. Failed assertions are highlighted in red with the specific test name and the actual versus expected values.\n    \n\n## Collection-Level Pre-Request Script\n\nThe collection defines a single pre-request script that executes **before the very first request of every run**. It is guarded by the `runId` variable so it executes exactly once per run, regardless of how many requests follow.\n\n### What the Script Does\n\n1. **Run identification** - Generates a timestamp (`runId`) from the current UTC time in the format `YYYY-MM-DDTHH-MM-SS-mmm`. The colons and dots are replaced with hyphens so the value is safe to embed inside email addresses.\n    \n2. **Unique test credentials** - Derives unique email addresses for `patient1`, `patient2`, and `staff` by interpolating `runId` into the address local part (for example, `patient1.2025-06-01T10-00-00-000@alustudent.com`). This ensures each run operates on a freshly registered set of users and avoids conflicts with records left behind by previous runs.\n    \n3. **Fixed passwords** - Sets deterministic passwords (`PatientPass123!` for patients and `StaffPass123!` for staff) that are reused across the run.\n    \n4. **Appointment date** - Computes a future appointment date set to seven days from the current UTC date and stores it as `appointmentDate` in `YYYY-MM-DD` format.\n    \n5. **Console logging** - Logs the generated `runId` to the Postman console to assist with debugging.\n    \n\n## API Endpoints Covered\n\n| Method | Endpoint | Access | Description |\n| --- | --- | --- | --- |\n| POST | /api/auth/register | Public | Register a new user (patient or staff) |\n| POST | /api/auth/login | Public | Authenticate and receive a JWT |\n| POST | /api/appointments | Patient | Book a new appointment |\n| GET | /api/appointments | Patient/Staff | List appointments (filtered by role) |\n| GET | /api/appointments/:id | Patient/Staff | Retrieve a single appointment by ID |\n| PATCH | /api/appointments/:id | Patient | Reschedule an appointment |\n| DELETE | /api/appointments/:id | Patient | Cancel an appointment |\n| PATCH | /api/appointments/:id/serve | Staff only | Mark an appointment as served |",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "53400535",
+    "_collection_link": "https://go.postman.co/collection/53400535-9f425e91-380d-47a1-909b-5256adfa37dc?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "01 - Happy Path",
+      "item": [
+        {
+          "name": "Register patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Body has a numeric userId', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.userId).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Patient One\",\n  \"email\": \"{{patient1Email}}\",\n  \"password\": \"{{patient1Password}}\",\n  \"role\": \"patient\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Registers a fresh patient account using the run-unique email address generated by the collection pre-request script.\n\n**Method:** POST  \n**Endpoint:** /api/auth/register  \n**Auth:** None (public endpoint)\n\n**Request Body Fields:**\n- `name` - Display name for the user.\n- `email` - Run-unique email address from `{{patient1Email}}`.\n- `password` - From `{{patient1Password}}`.\n- `role` - Must be `patient`.\n\n**Expected Response:** 201 Created  \n**Response Body:** Object containing a numeric `userId`.\n\n**Test Assertions:**\n- Status code is 201.\n- Response body contains a numeric `userId`."
+          },
+          "response": []
+        },
+        {
+          "name": "Login patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Returns a non-empty JWT token', () => {",
+                  "  pm.expect(body.token).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('Returns user with role patient', () => {",
+                  "  pm.expect(body.user.role).to.equal('patient');",
+                  "});",
+                  "pm.collectionVariables.set('patient1Token', body.token);",
+                  "pm.collectionVariables.set('patient1Id', body.user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{patient1Email}}\",\n  \"password\": \"{{patient1Password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticates Patient One and captures the returned JWT and user ID for use in downstream requests.\n\n**Method:** POST  \n**Endpoint:** /api/auth/login  \n**Auth:** None (public endpoint)\n\n**Request Body Fields:**\n- `email` - From `{{patient1Email}}`.\n- `password` - From `{{patient1Password}}`.\n\n**Expected Response:** 200 OK  \n**Response Body:** `{ token: string, user: { id: number, name: string, role: string } }`\n\n**Test Assertions:**\n- Status code is 200.\n- `token` is a non-empty string.\n- `user.role` equals `patient`.\n\n**Side Effects (collection variables set):**\n- `patient1Token` - set to `body.token`.\n- `patient1Id` - set to `body.user.id`."
+          },
+          "response": []
+        },
+        {
+          "name": "Register staff",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Body has a numeric userId', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.userId).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Staff One\",\n  \"email\": \"{{staffEmail}}\",\n  \"password\": \"{{staffPassword}}\",\n  \"role\": \"staff\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Registers a staff account so that staff-only endpoints (full appointment listing and mark-as-served) can be exercised in subsequent requests.\n\n**Method:** POST  \n**Endpoint:** /api/auth/register  \n**Auth:** None (public endpoint)\n\n**Request Body Fields:**\n- `name` - Display name.\n- `email` - From `{{staffEmail}}`.\n- `password` - From `{{staffPassword}}`.\n- `role` - Must be `staff`.\n\n**Expected Response:** 201 Created  \n**Response Body:** Object containing a numeric `userId`.\n\n**Test Assertions:**\n- Status code is 201.\n- Response body contains a numeric `userId`."
+          },
+          "response": []
+        },
+        {
+          "name": "Login staff",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Returns a non-empty JWT token', () => {",
+                  "  pm.expect(body.token).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('Returns user with role staff', () => {",
+                  "  pm.expect(body.user.role).to.equal('staff');",
+                  "});",
+                  "pm.collectionVariables.set('staffToken', body.token);",
+                  "pm.collectionVariables.set('staffId', body.user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{staffEmail}}\",\n  \"password\": \"{{staffPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticates the Staff member and captures the returned JWT and user ID.\n\n**Method:** POST  \n**Endpoint:** /api/auth/login  \n**Auth:** None (public endpoint)\n\n**Request Body Fields:**\n- `email` - From `{{staffEmail}}`.\n- `password` - From `{{staffPassword}}`.\n\n**Expected Response:** 200 OK  \n**Response Body:** `{ token: string, user: { id: number, name: string, role: string } }`\n\n**Test Assertions:**\n- Status code is 200.\n- `token` is a non-empty string.\n- `user.role` equals `staff`.\n\n**Side Effects (collection variables set):**\n- `staffToken` - set to `body.token`.\n- `staffId` - set to `body.user.id`."
+          },
+          "response": []
+        },
+        {
+          "name": "Create appointment (patient)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('Status is scheduled', () => pm.expect(body.status).to.equal('scheduled'));",
+                  "pm.test('Queue number is a positive integer', () => {",
+                  "  pm.expect(body.queueNumber).to.be.a('number').and.to.be.greaterThan(0);",
+                  "});",
+                  "pm.test('Patient ID matches the caller', () => {",
+                  "  pm.expect(body.patientId).to.equal(Number(pm.collectionVariables.get('patient1Id')));",
+                  "});",
+                  "pm.test('Date echoes the request date', () => {",
+                  "  pm.expect(body.date).to.equal(pm.collectionVariables.get('appointmentDate'));",
+                  "});",
+                  "pm.collectionVariables.set('appointmentId', body.id);",
+                  "pm.collectionVariables.set('appointmentQueueNumber', body.queueNumber);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient1Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorName\": \"Dr. Postman\",\n  \"reason\": \"Routine checkup via API tests\",\n  \"date\": \"{{appointmentDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Books Patient One's primary appointment. This is the central appointment record referenced by almost every subsequent test in the collection.\n\n**Method:** POST  \n**Endpoint:** /api/appointments  \n**Auth:** Bearer `{{patient1Token}}`\n\n**Request Body Fields:**\n- `doctorName` - Name of the doctor.\n- `reason` - Reason for the visit.\n- `date` - From `{{appointmentDate}}` (today plus seven days).\n\n**Expected Response:** 201 Created  \n**Response Body:** Appointment object with `id`, `status`, `queueNumber`, `patientId`, and `date`.\n\n**Test Assertions:**\n- Status code is 201.\n- `status` equals `scheduled`.\n- `queueNumber` is a positive integer.\n- `patientId` matches `patient1Id` (ownership check).\n- `date` echoes the submitted `appointmentDate`.\n\n**Side Effects (collection variables set):**\n- `appointmentId` - set to `body.id`.\n- `appointmentQueueNumber` - set to `body.queueNumber`."
+          },
+          "response": []
+        },
+        {
+          "name": "Register patient 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Body has a numeric userId', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.userId).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Patient Two\",\n  \"email\": \"{{patient2Email}}\",\n  \"password\": \"{{patient2Password}}\",\n  \"role\": \"patient\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Registers a second patient account. Patient Two is required so that role-based filtering of `GET /api/appointments` can be verified from both perspectives: a patient sees only their own records, while a staff member sees all records.\n\n**Method:** POST  \n**Endpoint:** /api/auth/register  \n**Auth:** None (public endpoint)\n\n**Expected Response:** 201 Created  \n**Response Body:** Object containing a numeric `userId`.\n\n**Test Assertions:**\n- Status code is 201.\n- Response body contains a numeric `userId`."
+          },
+          "response": []
+        },
+        {
+          "name": "Login patient 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Returns a non-empty JWT token', () => {",
+                  "  pm.expect(body.token).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('Returns user with role patient', () => {",
+                  "  pm.expect(body.user.role).to.equal('patient');",
+                  "});",
+                  "pm.collectionVariables.set('patient2Token', body.token);",
+                  "pm.collectionVariables.set('patient2Id', body.user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{patient2Email}}\",\n  \"password\": \"{{patient2Password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticates Patient Two and captures the returned JWT and user ID.\n\n**Method:** POST  \n**Endpoint:** /api/auth/login  \n**Auth:** None (public endpoint)\n\n**Expected Response:** 200 OK  \n**Response Body:** `{ token: string, user: { id: number, name: string, role: string } }`\n\n**Test Assertions:**\n- Status code is 200.\n- `token` is a non-empty string.\n- `user.role` equals `patient`.\n\n**Side Effects (collection variables set):**\n- `patient2Token` - set to `body.token`.\n- `patient2Id` - set to `body.user.id`."
+          },
+          "response": []
+        },
+        {
+          "name": "Create appointment (patient 2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('Status is scheduled', () => pm.expect(body.status).to.equal('scheduled'));",
+                  "pm.test('Patient ID matches patient 2', () => {",
+                  "  pm.expect(body.patientId).to.equal(Number(pm.collectionVariables.get('patient2Id')));",
+                  "});",
+                  "pm.collectionVariables.set('secondAppointmentId', body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient2Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorName\": \"Dr. Postman\",\n  \"reason\": \"Second patient's checkup via API tests\",\n  \"date\": \"{{appointmentDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Books Patient Two's appointment on the same date as Patient One's. Because the duplicate-day restriction is scoped per user, two different patients may hold appointments on the same calendar date, and this booking is therefore permitted.\n\n**Method:** POST  \n**Endpoint:** /api/appointments  \n**Auth:** Bearer `{{patient2Token}}`\n\n**Expected Response:** 201 Created  \n**Response Body:** Appointment object with `id`, `status`, and `patientId`.\n\n**Test Assertions:**\n- Status code is 201.\n- `status` equals `scheduled`.\n- `patientId` matches `patient2Id`.\n\n**Side Effects (collection variables set):**\n- `secondAppointmentId` - set to `body.id`."
+          },
+          "response": []
+        },
+        {
+          "name": "Get appointments (patient sees only own)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Body is an array', () => pm.expect(body).to.be.an('array'));",
+                  "pm.test(\"Array contains the patient's own appointment\", () => {",
+                  "  const id = Number(pm.collectionVariables.get('appointmentId'));",
+                  "  pm.expect(body.some((a) => a.id === id)).to.be.true;",
+                  "});",
+                  "pm.test(\"Array does NOT contain another patient's appointment\", () => {",
+                  "  const otherId = Number(pm.collectionVariables.get('secondAppointmentId'));",
+                  "  pm.expect(body.some((a) => a.id === otherId)).to.be.false;",
+                  "});",
+                  "pm.test('All returned appointments belong to the calling patient', () => {",
+                  "  const patientId = Number(pm.collectionVariables.get('patient1Id'));",
+                  "  pm.expect(body.every((a) => a.patientId === patientId)).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient1Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Verifies role-based filtering from the patient perspective. At this point in the run, both Patient One's and Patient Two's appointments exist in the database. A patient-authenticated request must return only the caller's own records and must exclude all records belonging to other patients.\n\n**Method:** GET  \n**Endpoint:** /api/appointments  \n**Auth:** Bearer `{{patient1Token}}`\n\n**Expected Response:** 200 OK  \n**Response Body:** Array of appointment objects.\n\n**Test Assertions:**\n- Status code is 200.\n- Response body is an array.\n- Array contains an entry whose `id` matches `appointmentId` (Patient One's record).\n- Array does NOT contain an entry whose `id` matches `secondAppointmentId` (Patient Two's record).\n- Every entry in the array has `patientId` equal to `patient1Id`, confirming the filter is comprehensive and not merely coincidental."
+          },
+          "response": []
+        },
+        {
+          "name": "Get appointment by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Returns the requested appointment', () => {",
+                  "  pm.expect(body.id).to.equal(Number(pm.collectionVariables.get('appointmentId')));",
+                  "});",
+                  "pm.test('Status is still scheduled at this point in the run', () => {",
+                  "  pm.expect(body.status).to.equal('scheduled');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient1Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{appointmentId}}"
+              ]
+            },
+            "description": "Retrieves a single appointment by its numeric ID. At this point in the run the appointment is still in `scheduled` state, confirming no unintended state transitions have occurred.\n\n**Method:** GET  \n**Endpoint:** /api/appointments/:id  \n**Auth:** Bearer `{{patient1Token}}`\n\n**Path Parameters:**\n- `:id` - `{{appointmentId}}` (Patient One's appointment)\n\n**Expected Response:** 200 OK  \n**Response Body:** Single appointment object.\n\n**Test Assertions:**\n- Status code is 200.\n- `body.id` equals `appointmentId`.\n- `body.status` equals `scheduled`."
+          },
+          "response": []
+        },
+        {
+          "name": "Get appointments (staff sees all)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Body is an array', () => pm.expect(body).to.be.an('array'));",
+                  "pm.test(\"Array contains patient 1's appointment\", () => {",
+                  "  const id = Number(pm.collectionVariables.get('appointmentId'));",
+                  "  pm.expect(body.some((a) => a.id === id)).to.be.true;",
+                  "});",
+                  "pm.test(\"Array contains patient 2's appointment\", () => {",
+                  "  const id = Number(pm.collectionVariables.get('secondAppointmentId'));",
+                  "  pm.expect(body.some((a) => a.id === id)).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Verifies role-based filtering from the staff perspective. A staff-authenticated request to `GET /api/appointments` must return all appointments across all patients. Together with the preceding patient-scoped listing test, this pair of requests proves that the role filter actively enforces isolation, not merely that the correct data happens to be present.\n\n**Method:** GET  \n**Endpoint:** /api/appointments  \n**Auth:** Bearer `{{staffToken}}`\n\n**Expected Response:** 200 OK  \n**Response Body:** Array of appointment objects spanning all patients.\n\n**Test Assertions:**\n- Status code is 200.\n- Response body is an array.\n- Array contains an entry with `id` matching `appointmentId` (Patient One's record).\n- Array contains an entry with `id` matching `secondAppointmentId` (Patient Two's record)."
+          },
+          "response": []
+        },
+        {
+          "name": "Staff marks patient as served",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Appointment status is now served', () => {",
+                  "  pm.expect(body.appointment.status).to.equal('served');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/serve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{appointmentId}}",
+                "serve"
+              ]
+            },
+            "description": "Transitions Patient One's appointment from `scheduled` to `served`. This is a staff-only action and represents the terminal served state in the appointment lifecycle. The resulting `served` state is required as a precondition by 03 - Edge Cases to test that a re-serve attempt is correctly rejected with 409 Conflict.\n\n**Method:** PATCH  \n**Endpoint:** /api/appointments/:id/serve  \n**Auth:** Bearer `{{staffToken}}` (staff role required)\n\n**Path Parameters:**\n- `:id` - `{{appointmentId}}` (Patient One's appointment)\n\n**Expected Response:** 200 OK  \n**Response Body:** Object containing an `appointment` object.\n\n**Test Assertions:**\n- Status code is 200.\n- `body.appointment.status` equals `served`."
+          },
+          "response": []
+        }
+      ],
+      "description": "## Folder: 01 - Happy Path\n\n### Purpose\n\nThis folder exercises every primary endpoint of the QueueCare API with valid input and verifies that each returns the expected 2xx success response. It constitutes the core positive test suite and must be executed first in a full collection run because it populates the collection variables - `patient1Token`, `patient1Id`, `patient2Token`, `patient2Id`, `staffToken`, `staffId`, `appointmentId`, `appointmentQueueNumber`, and `secondAppointmentId` - that all subsequent folders depend upon.\n\n### Execution Order and Intent\n\nRequests within this folder must execute in the order listed:\n\n1. **Register patient** and **Login patient** - Establishes Patient One's identity and token.\n2. **Register staff** and **Login staff** - Establishes the Staff member's identity and token.\n3. **Create appointment (patient)** - Books Patient One's primary appointment, capturing `appointmentId` and `appointmentQueueNumber`.\n4. **Register patient 2** and **Login patient 2** - Establishes Patient Two's identity and token.\n5. **Create appointment (patient 2)** - Books Patient Two's appointment on the same date, capturing `secondAppointmentId`. Because the duplicate-day rule is scoped per user, this booking is permitted.\n6. **Get appointments (patient sees only own)** - Verifies that a patient's listing response contains only their own appointments, not those of other patients.\n7. **Get appointment by ID** - Verifies that a single appointment can be retrieved by its numeric ID.\n8. **Get appointments (staff sees all)** - Verifies that a staff member's listing response contains appointments from all patients.\n9. **Staff marks patient as served** - Transitions Patient One's appointment to the `served` state. This is a terminal state used by 03 - Edge Cases to test the idempotency of re-serving.\n\n### No Standalone Pre-Request Seed\n\nThis folder does not define a folder-level pre-request script. It is the originating source of all shared state and relies entirely on the collection-level pre-request script for run initialisation."
+    },
+    {
+      "name": "02 - Negative",
+      "item": [
+        {
+          "name": "Login with wrong password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Body has an error message', () => {",
+                  "  pm.expect(body.error).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('No token returned', () => pm.expect(body.token).to.be.undefined);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{patient1Email}}\",\n  \"password\": \"WrongPassword!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Attempts to authenticate Patient One with a known valid email address but an incorrect password. The server must reject the request and must not return a token.\n\n**Method:** POST  \n**Endpoint:** /api/auth/login  \n**Auth:** None\n\n**Expected Response:** 401 Unauthorized  \n**Response Body:** Object with an `error` string. No `token` field.\n\n**Test Assertions:**\n- Status code is 401.\n- `body.error` is a non-empty string.\n- `body.token` is undefined."
+          },
+          "response": []
+        },
+        {
+          "name": "Login with non-existent email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Body has an error message', () => {",
+                  "  pm.expect(body.error).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ghost.{{runId}}@alustudent.com\",\n  \"password\": \"DoesNotMatter123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Attempts to authenticate with an email address that was never registered. The run-unique prefix ensures the address cannot coincidentally exist in the database. The server must return the same 401 response shape as a wrong-password attempt, avoiding user-enumeration leaks that would allow an attacker to determine which email addresses are registered.\n\n**Method:** POST  \n**Endpoint:** /api/auth/login  \n**Auth:** None\n\n**Expected Response:** 401 Unauthorized  \n**Response Body:** Object with an `error` string.\n\n**Test Assertions:**\n- Status code is 401.\n- `body.error` is a non-empty string."
+          },
+          "response": []
+        },
+        {
+          "name": "Register with missing fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Body has an error message', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"incomplete.{{runId}}@alustudent.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Submits a registration request that contains only the `email` field, omitting the required `name`, `password`, and `role` fields. The server must reject the request with a 400 error.\n\n**Method:** POST  \n**Endpoint:** /api/auth/register  \n**Auth:** None\n\n**Expected Response:** 400 Bad Request  \n**Response Body:** Object with an `error` string.\n\n**Test Assertions:**\n- Status code is 400.\n- `body.error` is a non-empty string."
+          },
+          "response": []
+        },
+        {
+          "name": "Create appointment without token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Body has an error message', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorName\": \"Dr. Anyone\",\n  \"reason\": \"Should not be created without auth\",\n  \"date\": \"{{appointmentDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Calls the appointment creation endpoint with no Authorization header. This validates that the endpoint enforces authentication before processing the request body.\n\n**Method:** POST  \n**Endpoint:** /api/appointments  \n**Auth:** None (deliberately omitted)\n\n**Expected Response:** 401 Unauthorized  \n**Response Body:** Object with an `error` string.\n\n**Test Assertions:**\n- Status code is 401.\n- `body.error` is a non-empty string."
+          },
+          "response": []
+        },
+        {
+          "name": "Create appointment with invalid token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Body has an error message', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer not.a.real.jwt"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorName\": \"Dr. Anyone\",\n  \"reason\": \"Should not be created with bad token\",\n  \"date\": \"{{appointmentDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Calls the appointment creation endpoint with a syntactically malformed JWT (`not.a.real.jwt`). The server must reject the token at the verification stage without processing the request body.\n\n**Method:** POST  \n**Endpoint:** /api/appointments  \n**Auth:** Bearer not.a.real.jwt (deliberately malformed)\n\n**Expected Response:** 401 Unauthorized  \n**Response Body:** Object with an `error` string.\n\n**Test Assertions:**\n- Status code is 401.\n- `body.error` is a non-empty string."
+          },
+          "response": []
+        },
+        {
+          "name": "Patient 2 tries to read patient 1's appointment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 403 Forbidden', () => pm.response.to.have.status(403));",
+                  "pm.test('Body has an error message', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient2Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{appointmentId}}"
+              ]
+            },
+            "description": "Patient Two attempts to retrieve Patient One's appointment by its numeric ID. Because patients may only access their own records, the server must reject this request with a 403 error rather than returning the appointment data.\n\n**Method:** GET  \n**Endpoint:** /api/appointments/:id  \n**Auth:** Bearer `{{patient2Token}}`\n\n**Path Parameters:**\n- `:id` - `{{appointmentId}}` (belongs to Patient One, not Patient Two)\n\n**Expected Response:** 403 Forbidden  \n**Response Body:** Object with an `error` string.\n\n**Test Assertions:**\n- Status code is 403.\n- `body.error` is a non-empty string."
+          },
+          "response": []
+        },
+        {
+          "name": "Patient tries to mark an appointment as served",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 403 Forbidden', () => pm.response.to.have.status(403));",
+                  "pm.test('Body has an error message', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient1Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{secondAppointmentId}}/serve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{secondAppointmentId}}",
+                "serve"
+              ]
+            },
+            "description": "Patient One attempts to invoke the staff-only mark-as-served endpoint on Patient Two's appointment. The server must reject this request on the basis of role, before performing any ownership or appointment-status check.\n\n**Method:** PATCH  \n**Endpoint:** /api/appointments/:id/serve  \n**Auth:** Bearer `{{patient1Token}}` (patient role - insufficient)\n\n**Path Parameters:**\n- `:id` - `{{secondAppointmentId}}` (Patient Two's appointment)\n\n**Expected Response:** 403 Forbidden  \n**Response Body:** Object with an `error` string.\n\n**Test Assertions:**\n- Status code is 403.\n- `body.error` is a non-empty string."
+          },
+          "response": []
+        },
+        {
+          "name": "Get non-existent appointment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('Body has an error message', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "999999"
+              ]
+            },
+            "description": "Requests an appointment whose ID (999999) does not exist in the database. The staff token is used deliberately so the server reaches the resource-lookup logic rather than returning 403. This isolates the 404 response as a resource-not-found condition rather than an authorisation denial.\n\n**Method:** GET  \n**Endpoint:** /api/appointments/:id  \n**Auth:** Bearer `{{staffToken}}`\n\n**Path Parameters:**\n- `:id` - 999999 (does not exist)\n\n**Expected Response:** 404 Not Found  \n**Response Body:** Object with an `error` string.\n\n**Test Assertions:**\n- Status code is 404.\n- `body.error` is a non-empty string."
+          },
+          "response": []
+        }
+      ],
+      "description": "## Folder: 02 - Negative\n\n### Purpose\n\nThis folder validates that the API rejects all invalid or unauthorised requests with the correct HTTP error status codes and meaningful error messages in the response body. It covers four categories of failure:\n\n- **Authentication failures (401)** - incorrect password, non-existent email, missing token, malformed JWT.\n- **Role boundary violations (403)** - a patient attempting to read another patient's appointment, and a patient attempting to invoke the staff-only mark-served endpoint.\n- **Resource not found (404)** - requesting an appointment ID that does not exist.\n- **Validation errors (400)** - registering with missing required fields.\n\n### Dependency on Happy Path\n\nThis folder reuses `patient1Token`, `patient2Token`, `staffToken`, `appointmentId`, and `secondAppointmentId` from 01 - Happy Path. When the full collection is run in sequence, all these variables are already populated and the folder-level pre-request seed script short-circuits immediately.\n\n### Standalone Execution\n\nWhen this folder is run independently (for example, via `npm run test:negative`), the folder-level pre-request script reconstructs the full baseline state. It registers and logs in all three users if their tokens are absent, and creates the two appointments if their IDs are absent. Each helper function is idempotent: it checks for the presence of the relevant collection variable before issuing any network request.\n\nThe seed uses the `seed_negative_done` guard variable to ensure the entire seeding block executes only once per folder run, regardless of how many requests are in the folder.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// ============================================================",
+              "// FOLDER-LEVEL PRE-REQUEST SEED: 02 - Negative",
+              "// ============================================================",
+              "// Purpose: Reconstruct the baseline state required by all",
+              "// negative tests when this folder is run standalone.",
+              "//",
+              "// State required by this folder:",
+              "//   - patient1Token, patient1Id",
+              "//   - patient2Token, patient2Id",
+              "//   - staffToken, staffId",
+              "//   - appointmentId (Patient One's scheduled appointment)",
+              "//   - secondAppointmentId (Patient Two's scheduled appointment)",
+              "//",
+              "// Guard variable: seed_negative_done",
+              "//   Set to 'true' after successful seeding to prevent",
+              "//   re-execution on subsequent requests within the folder.",
+              "//",
+              "// Full run behaviour: every ensureX helper finds its target",
+              "// collection variable already populated by Happy Path and",
+              "// short-circuits without issuing any network requests.",
+              "// ============================================================",
+              "(() => {",
+              "  if (pm.collectionVariables.get('seed_negative_done') === 'true') return;",
+              "  const baseUrl = pm.variables.get('baseUrl');",
+              "  function send(method, path, token, body, cb) {",
+              "    const header = { 'Content-Type': 'application/json' };",
+              "    if (token) header.Authorization = 'Bearer ' + token;",
+              "    const req = { url: baseUrl + path, method, header };",
+              "    if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+              "    pm.sendRequest(req, (err, res) => {",
+              "      if (err) console.warn('[seed]', method, path, 'error:', err.message);",
+              "      let json = null;",
+              "      try { json = res ? res.json() : null; } catch (_e) {}",
+              "      cb(err, json);",
+              "    });",
+              "  }",
+              "  function ensureUser(name, role, emailVar, passVar, tokenVar, idVar, cb) {",
+              "    if (pm.collectionVariables.get(tokenVar)) return cb();",
+              "    const email = pm.collectionVariables.get(emailVar);",
+              "    const password = pm.collectionVariables.get(passVar);",
+              "    send('POST', '/api/auth/register', null, { name, email, password, role }, () => {",
+              "      send('POST', '/api/auth/login', null, { email, password }, (err, body) => {",
+              "        if (body && body.token) {",
+              "          pm.collectionVariables.set(tokenVar, body.token);",
+              "          pm.collectionVariables.set(idVar, body.user.id);",
+              "        }",
+              "        cb();",
+              "      });",
+              "    });",
+              "  }",
+              "  function ensureAppointment(tokenVar, idVar, reason, cb) {",
+              "    if (pm.collectionVariables.get(idVar)) return cb();",
+              "    const token = pm.collectionVariables.get(tokenVar);",
+              "    const date = pm.collectionVariables.get('appointmentDate');",
+              "    send('POST', '/api/appointments', token, { doctorName: 'Dr. Postman', reason, date }, (err, body) => {",
+              "      if (body && body.id) {",
+              "        pm.collectionVariables.set(idVar, body.id);",
+              "        if (idVar === 'appointmentId') pm.collectionVariables.set('appointmentQueueNumber', body.queueNumber);",
+              "      }",
+              "      cb();",
+              "    });",
+              "  }",
+              "  ensureUser('Patient One', 'patient', 'patient1Email', 'patient1Password', 'patient1Token', 'patient1Id', () => {",
+              "    ensureUser('Patient Two', 'patient', 'patient2Email', 'patient2Password', 'patient2Token', 'patient2Id', () => {",
+              "      ensureUser('Staff One', 'staff', 'staffEmail', 'staffPassword', 'staffToken', 'staffId', () => {",
+              "        ensureAppointment('patient1Token', 'appointmentId', 'Routine checkup via API tests', () => {",
+              "          ensureAppointment('patient2Token', 'secondAppointmentId', \"Second patient's checkup via API tests\", () => {",
+              "            pm.collectionVariables.set('seed_negative_done', 'true');",
+              "          });",
+              "        });",
+              "      });",
+              "    });",
+              "  });",
+              "})();"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Edge Cases",
+      "item": [
+        {
+          "name": "Book appointment in the past",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Body has an error message', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient1Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorName\": \"Dr. TimeTraveler\",\n  \"reason\": \"This date has already passed\",\n  \"date\": \"2020-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Attempts to book an appointment on a date that is in the past (1 January 2020). The server must validate that the requested date is not before the current date and reject the request accordingly.\n\n**Method:** POST  \n**Endpoint:** /api/appointments  \n**Auth:** Bearer `{{patient1Token}}`\n\n**Expected Response:** 400 Bad Request  \n**Response Body:** Object with an `error` string describing a date-related validation failure.\n\n**Test Assertions:**\n- Status code is 400.\n- `body.error` is a non-empty string."
+          },
+          "response": []
+        },
+        {
+          "name": "Duplicate same-day booking",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Body has an error message', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient1Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorName\": \"Dr. Postman\",\n  \"reason\": \"Trying to double-book the same date\",\n  \"date\": \"{{appointmentDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Patient One already holds an appointment on `{{appointmentDate}}` (created in Happy Path). Attempting to book a second appointment on the same calendar date must be rejected. Note that the same-day rule is scoped per patient - Patient Two was permitted to book on the same date in Happy Path because they are a different user.\n\n**Method:** POST  \n**Endpoint:** /api/appointments  \n**Auth:** Bearer `{{patient1Token}}`\n\n**Expected Response:** 400 Bad Request  \n**Response Body:** Object with an `error` string.\n\n**Test Assertions:**\n- Status code is 400.\n- `body.error` is a non-empty string."
+          },
+          "response": []
+        },
+        {
+          "name": "Book appointment with invalid date format",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Body has an error message', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient1Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorName\": \"Dr. Format\",\n  \"reason\": \"Date is not YYYY-MM-DD\",\n  \"date\": \"2025/13/45\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Submits a date value (`2025/13/45`) that uses slashes instead of hyphens and contains an impossible month and day. The server must validate the date format strictly and reject this request.\n\n**Method:** POST  \n**Endpoint:** /api/appointments  \n**Auth:** Bearer `{{patient1Token}}`\n\n**Expected Response:** 400 Bad Request  \n**Response Body:** Object with an `error` string.\n\n**Test Assertions:**\n- Status code is 400.\n- `body.error` is a non-empty string."
+          },
+          "response": []
+        },
+        {
+          "name": "Reschedule to a past date",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Body has an error message', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient2Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2020-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{secondAppointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{secondAppointmentId}}"
+              ]
+            },
+            "description": "Patient Two attempts to reschedule their scheduled appointment (`secondAppointmentId`) to a date in the past (1 January 2020). The server must reject the update and leave the appointment unchanged in its current `scheduled` state.\n\n**Method:** PATCH  \n**Endpoint:** /api/appointments/:id  \n**Auth:** Bearer `{{patient2Token}}`\n\n**Path Parameters:**\n- `:id` - `{{secondAppointmentId}}`\n\n**Expected Response:** 400 Bad Request  \n**Response Body:** Object with an `error` string.\n\n**Test Assertions:**\n- Status code is 400.\n- `body.error` is a non-empty string."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel patient 2's appointment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Body has a confirmation message', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient2Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{secondAppointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{secondAppointmentId}}"
+              ]
+            },
+            "description": "Cancels Patient Two's appointment (`secondAppointmentId`). This request serves two purposes: it verifies that the cancellation endpoint functions correctly (200 OK), and it transitions `secondAppointmentId` to the `cancelled` terminal state, which is required as a precondition for the next two requests - the duplicate-cancellation idempotency test and the re-booking test.\n\n**Method:** DELETE  \n**Endpoint:** /api/appointments/:id  \n**Auth:** Bearer `{{patient2Token}}`\n\n**Path Parameters:**\n- `:id` - `{{secondAppointmentId}}`\n\n**Expected Response:** 200 OK  \n**Response Body:** Object with a `message` confirmation string.\n\n**Test Assertions:**\n- Status code is 200.\n- `body.message` is a non-empty string."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel an already-cancelled appointment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('Body has an error message', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient2Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{secondAppointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{secondAppointmentId}}"
+              ]
+            },
+            "description": "Attempts to cancel `secondAppointmentId` a second time, immediately after it was cancelled by the preceding request. The appointment is now in a terminal `cancelled` state. The server must handle this idempotency case gracefully, returning a 409 Conflict with a descriptive error message rather than silently re-cancelling or returning a 500 error.\n\n**Method:** DELETE  \n**Endpoint:** /api/appointments/:id  \n**Auth:** Bearer `{{patient2Token}}`\n\n**Path Parameters:**\n- `:id` - `{{secondAppointmentId}}` (already cancelled)\n\n**Expected Response:** 409 Conflict  \n**Response Body:** Object with an `error` string.\n\n**Test Assertions:**\n- Status code is 409.\n- `body.error` is a non-empty string."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark already-served appointment as served again",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('Body has an error message', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/serve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{appointmentId}}",
+                "serve"
+              ]
+            },
+            "description": "Attempts to mark Patient One's appointment as served a second time. The appointment was transitioned to `served` in Happy Path (or by the standalone seed), making it a terminal state. The server must reject this re-serve attempt with a 409 Conflict and a descriptive message.\n\n**Method:** PATCH  \n**Endpoint:** /api/appointments/:id/serve  \n**Auth:** Bearer `{{staffToken}}`\n\n**Path Parameters:**\n- `:id` - `{{appointmentId}}` (already in served state)\n\n**Expected Response:** 409 Conflict  \n**Response Body:** Object with an `error` string.\n\n**Test Assertions:**\n- Status code is 409.\n- `body.error` is a non-empty string."
+          },
+          "response": []
+        },
+        {
+          "name": "Re-book same day after cancellation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('Status is scheduled', () => pm.expect(body.status).to.equal('scheduled'));",
+                  "pm.test('Date echoes the request date', () => {",
+                  "  pm.expect(body.date).to.equal(pm.collectionVariables.get('appointmentDate'));",
+                  "});",
+                  "pm.collectionVariables.set('thirdAppointmentId', body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient2Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorName\": \"Dr. Postman\",\n  \"reason\": \"Re-booking after cancellation on the same date\",\n  \"date\": \"{{appointmentDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Patient Two's appointment for `{{appointmentDate}}` was cancelled by the preceding request. This test verifies that a patient may re-book on the same calendar date after their previous appointment on that date has been cancelled - i.e., cancellation releases the date slot for future use.\n\n**Method:** POST  \n**Endpoint:** /api/appointments  \n**Auth:** Bearer `{{patient2Token}}`\n\n**Expected Response:** 201 Created  \n**Response Body:** Appointment object with `id`, `status`, and `date`.\n\n**Test Assertions:**\n- Status code is 201.\n- `status` equals `scheduled`.\n- `date` echoes `{{appointmentDate}}`.\n\n**Side Effects (collection variables set):**\n- `thirdAppointmentId` - set to `body.id`. This is the only remaining scheduled appointment after a full run and is consumed by 99 - Teardown."
+          },
+          "response": []
+        }
+      ],
+      "description": "## Folder: 03 - Edge Cases\n\n### Purpose\n\nThis folder tests boundary conditions and state-machine transitions that sit at the edge of valid behaviour. The tests are grouped into three themes:\n\n1. **Date validation** - past-date booking, invalid date format, and reschedule-to-past-date.\n2. **Booking uniqueness** - duplicate same-day booking by the same patient.\n3. **Appointment state machine** - idempotent cancellation (409), idempotent mark-as-served (409), and re-booking on the same date after a prior cancellation (which must succeed).\n\n### Mutations Introduced\n\nThis folder modifies shared state:\n- `secondAppointmentId` is cancelled (transitions to the `cancelled` terminal state).\n- `thirdAppointmentId` is created by the re-book test and must be cleaned up by 99 - Teardown.\n\n### Standalone Execution\n\nWhen run independently (for example, via `npm run test:edge`), the folder-level pre-request seed reconstructs the full baseline plus marks `appointmentId` as `served`. The additional served step is required because the 'Mark already-served appointment as served again' test expects `appointmentId` to already be in the `served` state. Each helper is idempotent: `ensureServed` issues the PATCH request and accepts both 200 and 409 as valid outcomes.\n\nThe seed uses the `seed_edge_done` guard variable to execute the seeding block exactly once per folder run.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// ============================================================",
+              "// FOLDER-LEVEL PRE-REQUEST SEED: 03 - Edge Cases",
+              "// ============================================================",
+              "// Purpose: Reconstruct the full baseline state plus the",
+              "// 'served' terminal state on appointmentId, required by the",
+              "// 'Mark already-served appointment as served again' test.",
+              "//",
+              "// State required by this folder:",
+              "//   - patient1Token, patient1Id",
+              "//   - patient2Token, patient2Id",
+              "//   - staffToken, staffId",
+              "//   - appointmentId (Patient One's appointment, in served state)",
+              "//   - secondAppointmentId (Patient Two's appointment, scheduled)",
+              "//",
+              "// Guard variable: seed_edge_done",
+              "//   Set to 'true' after successful seeding.",
+              "//",
+              "// ensureServed is idempotent: accepts 200 (served now) or",
+              "// 409 (already served) as both valid outcomes.",
+              "// ============================================================",
+              "(() => {",
+              "  if (pm.collectionVariables.get('seed_edge_done') === 'true') return;",
+              "  const baseUrl = pm.variables.get('baseUrl');",
+              "  function send(method, path, token, body, cb) {",
+              "    const header = { 'Content-Type': 'application/json' };",
+              "    if (token) header.Authorization = 'Bearer ' + token;",
+              "    const req = { url: baseUrl + path, method, header };",
+              "    if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+              "    pm.sendRequest(req, (err, res) => {",
+              "      if (err) console.warn('[seed]', method, path, 'error:', err.message);",
+              "      let json = null;",
+              "      try { json = res ? res.json() : null; } catch (_e) {}",
+              "      cb(err, json);",
+              "    });",
+              "  }",
+              "  function ensureUser(name, role, emailVar, passVar, tokenVar, idVar, cb) {",
+              "    if (pm.collectionVariables.get(tokenVar)) return cb();",
+              "    const email = pm.collectionVariables.get(emailVar);",
+              "    const password = pm.collectionVariables.get(passVar);",
+              "    send('POST', '/api/auth/register', null, { name, email, password, role }, () => {",
+              "      send('POST', '/api/auth/login', null, { email, password }, (err, body) => {",
+              "        if (body && body.token) {",
+              "          pm.collectionVariables.set(tokenVar, body.token);",
+              "          pm.collectionVariables.set(idVar, body.user.id);",
+              "        }",
+              "        cb();",
+              "      });",
+              "    });",
+              "  }",
+              "  function ensureAppointment(tokenVar, idVar, reason, cb) {",
+              "    if (pm.collectionVariables.get(idVar)) return cb();",
+              "    const token = pm.collectionVariables.get(tokenVar);",
+              "    const date = pm.collectionVariables.get('appointmentDate');",
+              "    send('POST', '/api/appointments', token, { doctorName: 'Dr. Postman', reason, date }, (err, body) => {",
+              "      if (body && body.id) {",
+              "        pm.collectionVariables.set(idVar, body.id);",
+              "        if (idVar === 'appointmentId') pm.collectionVariables.set('appointmentQueueNumber', body.queueNumber);",
+              "      }",
+              "      cb();",
+              "    });",
+              "  }",
+              "  // Idempotent: 200 if not yet served, 409 if already served. Both are fine.",
+              "  function ensureServed(cb) {",
+              "    const apptId = pm.collectionVariables.get('appointmentId');",
+              "    const staffToken = pm.collectionVariables.get('staffToken');",
+              "    send('PATCH', '/api/appointments/' + apptId + '/serve', staffToken, null, () => cb());",
+              "  }",
+              "  ensureUser('Patient One', 'patient', 'patient1Email', 'patient1Password', 'patient1Token', 'patient1Id', () => {",
+              "    ensureUser('Patient Two', 'patient', 'patient2Email', 'patient2Password', 'patient2Token', 'patient2Id', () => {",
+              "      ensureUser('Staff One', 'staff', 'staffEmail', 'staffPassword', 'staffToken', 'staffId', () => {",
+              "        ensureAppointment('patient1Token', 'appointmentId', 'Routine checkup via API tests', () => {",
+              "          ensureAppointment('patient2Token', 'secondAppointmentId', \"Second patient's checkup via API tests\", () => {",
+              "            ensureServed(() => {",
+              "              pm.collectionVariables.set('seed_edge_done', 'true');",
+              "            });",
+              "          });",
+              "        });",
+              "      });",
+              "    });",
+              "  });",
+              "})();"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Bugs",
+      "item": [
+        {
+          "name": "B1 - Past time on today's date is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 400 Bad Request (past time today must be rejected)', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient1Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorName\": \"Dr. Postman\",\n  \"reason\": \"Bug B1 fixture\",\n  \"date\": \"{{todayDate}}\",\n  \"time\": \"00:01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Books an appointment for today at 00:01. The wall-clock time has already passed, so the API should reject this request.\n\n**Expected:** 400 Bad Request.\n\n**Actual:** 201 Created. The appointments table has no `time` column at all, and the `validateDate` function compares only date strings against today's date. Time data submitted by clients is silently dropped, and any time on today's date is accepted regardless of when the wall clock has reached."
+          },
+          "response": []
+        },
+        {
+          "name": "B2 - Impossible calendar date is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 400 Bad Request (Feb 30 is not a valid calendar date)', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient1Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorName\": \"Dr. Postman\",\n  \"reason\": \"Bug B2 fixture\",\n  \"date\": \"2099-02-30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Books an appointment for `2099-02-30`, which is not a real calendar date.\n\n**Expected:** 400 Bad Request with a date-related error.\n\n**Actual:** 201 Created. The `validateDate` regex matches `YYYY-MM-DD` purely by digit count. The subsequent `new Date('2099-02-30T00:00:00')` call returns a valid Date object pointing at March 2, 2099 because JavaScript's Date constructor is lenient. The original string `2099-02-30` is then persisted to the database as the appointment date, where it represents a calendar date that does not exist."
+          },
+          "response": []
+        },
+        {
+          "name": "B5 - Self-registration as admin is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 403 or 422 (admin self-registration must be rejected)', () => {",
+                  "  pm.expect([403, 422]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bogus Admin\",\n  \"email\": \"bogus-admin.{{runId}}@alustudent.com\",\n  \"password\": \"AdminPass123!\",\n  \"role\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Sends a public registration request with `role: \"admin\"`. Privilege elevation must require authority that an unauthenticated client cannot have.\n\n**Expected:** 403 Forbidden, or 422 Unprocessable Entity with the role rejected. Either signals that the role must be assigned by an existing administrator rather than self-claimed.\n\n**Actual:** 201 Created. The register handler validates only that the role string is one of the three permitted values (`patient`, `staff`, `admin`) and creates the account with whatever role the client supplied. Any external party can give themselves admin privileges by passing the role in the request body."
+          },
+          "response": []
+        },
+        {
+          "name": "B6 - Mark-served on a future-dated appointment is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 400 or 409 (cannot serve a future-dated appointment)', () => {",
+                  "  pm.expect([400, 409]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{bugsFutureAppointmentId}}/serve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{bugsFutureAppointmentId}}",
+                "serve"
+              ]
+            },
+            "description": "Marks an appointment dated 30 days from now as served. Serving an appointment that has not yet occurred makes no clinical sense and should be rejected.\n\n**Expected:** 400 Bad Request or 409 Conflict.\n\n**Actual:** 200 OK. The `serve` handler in `appointments.controller.js` checks for the `served` and `cancelled` states but never inspects the `date` field. As a result staff can prematurely close out future appointments and the queue ordering for the affected day becomes inconsistent."
+          },
+          "response": []
+        },
+        {
+          "name": "B7 - Cancel a served appointment is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 409 Conflict (cannot cancel a served appointment)', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient1Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{appointmentId}}"
+              ]
+            },
+            "description": "Patient One's `appointmentId` is in `served` state at this point in the run (set by Happy Path or by the folder-level seed). Attempting to cancel a served appointment should be rejected because `served` is a terminal state representing a completed visit.\n\n**Expected:** 409 Conflict with a state-machine error message.\n\n**Actual:** 200 OK. The `cancel` handler tests only `existing.status === 'cancelled'` and silently UPDATEs `served` rows back to `cancelled`. The audit trail loses the record that the patient was actually seen, and any reporting that relies on `status === 'served'` undercounts as a result."
+          },
+          "response": []
+        },
+        {
+          "name": "B8 - Whitespace-only required fields are rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 400 Bad Request (whitespace-only fields must be rejected)', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient1Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorName\": \"   \",\n  \"reason\": \"   \",\n  \"date\": \"{{bugsB8Date}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Submits an appointment payload whose `doctorName` and `reason` are pure whitespace. A whitespace-only string is a meaningless value for a clinic record and should be rejected with the same error the controller raises for missing fields.\n\n**Expected:** 400 Bad Request.\n\n**Actual:** 201 Created. The validation guard `if (!doctorName || !reason || !date)` rejects only falsy values. The string `\"   \"` is truthy, so it slips past every check and is persisted verbatim. Whitespace-trimming or non-empty validation is missing across the create path."
+          },
+          "response": []
+        },
+        {
+          "name": "B9 - PATCH overwriting doctorName with empty string is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 400 Bad Request (cannot overwrite doctorName with empty string)', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient2Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorName\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{bugsScheduledAppointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{bugsScheduledAppointmentId}}"
+              ]
+            },
+            "description": "PATCHes a scheduled appointment with `doctorName` set to an empty string. An empty doctor name is no different from a missing one and should be rejected.\n\n**Expected:** 400 Bad Request.\n\n**Actual:** 200 OK with `doctorName` overwritten to `\"\"` in the database. Two compounding defects make this slip through. First, the update handler's guard `(doctorName === undefined && reason === undefined && date === undefined)` only triggers when every field is absent, so an empty string is treated as 'present and intended'. Second, the service merges with `updates.doctorName ?? existing.doctorName`; the nullish coalescing operator short-circuits only on `null` or `undefined`, so `\"\"` is preserved and written to the row."
+          },
+          "response": []
+        }
+      ],
+      "description": "## Folder: 04 - Bugs\n\n### Purpose\n\nThese are real defects I found while testing the QueueCare API. Rather than mixing them into the functional suites and skewing those results, I separated them here. Every request in this folder is expected to fail against the current codebase.\n\n### Bugs Found\n\n**B1 - Past time on today's date is accepted**  \nThe validator compares date strings only. With no time column on the appointments table, a booking for today at a past time goes through without rejection.\n\n**B2 - Impossible calendar dates are persisted**  \nJavaScript's Date constructor silently resolves dates like 2099-02-30 instead of throwing. The value is never re-validated and gets written to the database as-is.\n\n**B5 - Anyone can self-register as admin**  \nThe registration handler accepts admin as a valid role string with no privilege check, meaning any new user can assign themselves administrative access on signup.\n\n**B6 - Staff can serve a future-dated appointment**  \nThe serve handler never inspects the date field, so an appointment scheduled for next week can be marked as served today.\n\n**B7 - Patients can cancel a served appointment**  \nThe cancel handler only guards against the cancelled state. A patient can cancel an already-served appointment, silently rolling the status back to cancelled and corrupting the record.\n\n**B8 - Whitespace-only values pass field validation**  \nThe create handler uses a falsy check on doctorName and reason. A string of spaces is truthy, clears validation, and gets stored as the field value.\n\n**B9 - Empty string overwrites doctorName on PATCH**  \nThe nullish coalescing operator used in the update handler does not short-circuit on an empty string, only on null or undefined. Sending an explicit empty string for doctorName silently clears the field.\n\n### Standalone Execution\n\nThe folder-level pre-request seed reconstructs everything each test depends on: appointmentId is created and served (required for B7), a future-dated appointment is created under bugsFutureAppointmentId (required for B6), and a scheduled appointment is created under bugsScheduledAppointmentId (required for B9). All helpers are idempotent. The seed_bugs_done guard ensures the block runs exactly once per folder execution.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// ============================================================",
+              "// FOLDER-LEVEL PRE-REQUEST SEED: 04 - Bugs",
+              "// ============================================================",
+              "// Reconstructs the baseline state, plus a served appointmentId",
+              "// (for B7), a future-dated appointment (for B6), and a",
+              "// scheduled appointment owned by patient2 (for B9). Also",
+              "// computes three dates used by the requests in this folder:",
+              "//   - todayDate: today's local date (YYYY-MM-DD), used by B1",
+              "//   - bugsB8Date: today + 21 days, used by B8",
+              "//   - bugsFutureDate: today + 30 days, used by the seeded",
+              "//                     bugsFutureAppointmentId (consumed by B6)",
+              "//   - bugsScheduledDate: today + 14 days, used by the seeded",
+              "//                        bugsScheduledAppointmentId (consumed by B9)",
+              "//",
+              "// Guard variable: seed_bugs_done",
+              "// ============================================================",
+              "(() => {",
+              "  if (pm.collectionVariables.get('seed_bugs_done') === 'true') return;",
+              "  const baseUrl = pm.variables.get('baseUrl');",
+              "  function send(method, path, token, body, cb) {",
+              "    const header = { 'Content-Type': 'application/json' };",
+              "    if (token) header.Authorization = 'Bearer ' + token;",
+              "    const req = { url: baseUrl + path, method, header };",
+              "    if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+              "    pm.sendRequest(req, (err, res) => {",
+              "      if (err) console.warn('[seed]', method, path, 'error:', err.message);",
+              "      let json = null;",
+              "      try { json = res ? res.json() : null; } catch (_e) {}",
+              "      cb(err, json);",
+              "    });",
+              "  }",
+              "  function ensureUser(name, role, emailVar, passVar, tokenVar, idVar, cb) {",
+              "    if (pm.collectionVariables.get(tokenVar)) return cb();",
+              "    const email = pm.collectionVariables.get(emailVar);",
+              "    const password = pm.collectionVariables.get(passVar);",
+              "    send('POST', '/api/auth/register', null, { name, email, password, role }, () => {",
+              "      send('POST', '/api/auth/login', null, { email, password }, (err, body) => {",
+              "        if (body && body.token) {",
+              "          pm.collectionVariables.set(tokenVar, body.token);",
+              "          pm.collectionVariables.set(idVar, body.user.id);",
+              "        }",
+              "        cb();",
+              "      });",
+              "    });",
+              "  }",
+              "  function ensureAppointment(tokenVar, idVar, reason, dateVar, cb) {",
+              "    if (pm.collectionVariables.get(idVar)) return cb();",
+              "    const token = pm.collectionVariables.get(tokenVar);",
+              "    const date = pm.collectionVariables.get(dateVar);",
+              "    send('POST', '/api/appointments', token, { doctorName: 'Dr. Postman', reason, date }, (err, body) => {",
+              "      if (body && body.id) pm.collectionVariables.set(idVar, body.id);",
+              "      cb();",
+              "    });",
+              "  }",
+              "  // Idempotent: returns 200 if not yet served, 409 if already served. Both are fine.",
+              "  function ensureServed(cb) {",
+              "    const apptId = pm.collectionVariables.get('appointmentId');",
+              "    const staffToken = pm.collectionVariables.get('staffToken');",
+              "    send('PATCH', '/api/appointments/' + apptId + '/serve', staffToken, null, () => cb());",
+              "  }",
+              "  // Compute the dates this folder needs.",
+              "  if (!pm.collectionVariables.get('todayDate')) {",
+              "    const dt = new Date();",
+              "    const pad = (n) => String(n).padStart(2, '0');",
+              "    pm.collectionVariables.set('todayDate', dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()));",
+              "  }",
+              "  if (!pm.collectionVariables.get('bugsB8Date')) {",
+              "    const d21 = new Date();",
+              "    d21.setUTCDate(d21.getUTCDate() + 21);",
+              "    pm.collectionVariables.set('bugsB8Date', d21.toISOString().slice(0, 10));",
+              "  }",
+              "  if (!pm.collectionVariables.get('bugsFutureDate')) {",
+              "    const d30 = new Date();",
+              "    d30.setUTCDate(d30.getUTCDate() + 30);",
+              "    pm.collectionVariables.set('bugsFutureDate', d30.toISOString().slice(0, 10));",
+              "  }",
+              "  if (!pm.collectionVariables.get('bugsScheduledDate')) {",
+              "    const d14 = new Date();",
+              "    d14.setUTCDate(d14.getUTCDate() + 14);",
+              "    pm.collectionVariables.set('bugsScheduledDate', d14.toISOString().slice(0, 10));",
+              "  }",
+              "  ensureUser('Patient One', 'patient', 'patient1Email', 'patient1Password', 'patient1Token', 'patient1Id', () => {",
+              "    ensureUser('Patient Two', 'patient', 'patient2Email', 'patient2Password', 'patient2Token', 'patient2Id', () => {",
+              "      ensureUser('Staff One', 'staff', 'staffEmail', 'staffPassword', 'staffToken', 'staffId', () => {",
+              "        ensureAppointment('patient1Token', 'appointmentId', 'Routine checkup via API tests', 'appointmentDate', () => {",
+              "          ensureServed(() => {",
+              "            ensureAppointment('patient1Token', 'bugsFutureAppointmentId', 'Bug fixture: future-dated appointment for B6', 'bugsFutureDate', () => {",
+              "              ensureAppointment('patient2Token', 'bugsScheduledAppointmentId', 'Bug fixture: scheduled appointment for B9', 'bugsScheduledDate', () => {",
+              "                pm.collectionVariables.set('seed_bugs_done', 'true');",
+              "              });",
+              "            });",
+              "          });",
+              "        });",
+              "      });",
+              "    });",
+              "  });",
+              "})();"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "99 - Teardown",
+      "item": [
+        {
+          "name": "Cancel patient 2's re-booked appointment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cancellation succeeded (200) or appointment was already terminal (409)', () => {",
+                  "  pm.expect([200, 409]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patient2Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{thirdAppointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{thirdAppointmentId}}"
+              ]
+            },
+            "description": "Cancels the re-booked appointment created by the 'Re-book same day after cancellation' request in 03 - Edge Cases. This is the only test-created appointment still in a `scheduled` state after a full run; all others are in terminal states and require no cleanup.\n\nThe test assertion is intentionally defensive: both 200 OK (cancelled successfully) and 409 Conflict (already in a terminal state due to a partial prior run) are accepted as passing outcomes, ensuring that the teardown step is safe to re-run without failing the test suite.\n\n**Method:** DELETE  \n**Endpoint:** /api/appointments/:id  \n**Auth:** Bearer `{{patient2Token}}`\n\n**Path Parameters:**\n- `:id` - `{{thirdAppointmentId}}`\n\n**Expected Response:** 200 OK or 409 Conflict  \n\n**Test Assertions:**\n- Response status code is either 200 or 409."
+          },
+          "response": []
+        }
+      ],
+      "description": "## Folder: 99 - Teardown\n\n### Purpose\n\nThis folder cancels all test-owned appointments that remain in a `scheduled` state after a complete run, preventing the SQLite database file from accumulating stale records across successive runs.\n\n### Terminal State Analysis After a Full Run\n\nAfter a clean sequential execution of folders 01 through 03, the state of each test-created appointment is as follows:\n\n| Variable              | Owner     | Terminal State | Requires Cleanup |\n|-----------------------|-----------|----------------|------------------|\n| `appointmentId`       | Patient 1 | served         | No               |\n| `secondAppointmentId` | Patient 2 | cancelled      | No               |\n| `thirdAppointmentId`  | Patient 2 | scheduled      | **Yes**          |\n\nOnly `thirdAppointmentId` requires an explicit cancellation request. The other two appointments are already in terminal states and cannot be cancelled.\n\n### Standalone Execution\n\nWhen run independently (for example, via `npm run test:teardown`), the folder-level pre-request seed reconstructs the full pipeline state required to produce `thirdAppointmentId`. This includes registering and logging in all three users, creating both initial appointments, marking `appointmentId` as served, cancelling `secondAppointmentId`, and creating `thirdAppointmentId`. The `seed_teardown_done` guard variable prevents re-execution on subsequent requests within the folder.\n\n### Defensive Test Assertion\n\nThe single request in this folder accepts both 200 OK (successful cancellation) and 409 Conflict (appointment was already cancelled, for example by a partial prior run) as passing outcomes, making the teardown step safe to re-run.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// ============================================================",
+              "// FOLDER-LEVEL PRE-REQUEST SEED: 99 - Teardown",
+              "// ============================================================",
+              "// Purpose: Reconstruct the full post-edge-case pipeline state",
+              "// so this folder can be run standalone and still have",
+              "// thirdAppointmentId available to cancel.",
+              "//",
+              "// Pipeline state seeded:",
+              "//   1. All three users registered and authenticated.",
+              "//   2. appointmentId created and served.",
+              "//   3. secondAppointmentId created and cancelled.",
+              "//   4. thirdAppointmentId created (re-book after cancellation).",
+              "//",
+              "// Guard variable: seed_teardown_done",
+              "//   Set to 'true' after successful seeding.",
+              "//",
+              "// All helpers are idempotent: they check for the presence of",
+              "// the relevant collection variable before issuing any network",
+              "// request. ensureServed and ensureCancelledSecond each accept",
+              "// both success and conflict responses as valid outcomes.",
+              "// ============================================================",
+              "(() => {",
+              "  if (pm.collectionVariables.get('seed_teardown_done') === 'true') return;",
+              "  const baseUrl = pm.variables.get('baseUrl');",
+              "  function send(method, path, token, body, cb) {",
+              "    const header = { 'Content-Type': 'application/json' };",
+              "    if (token) header.Authorization = 'Bearer ' + token;",
+              "    const req = { url: baseUrl + path, method, header };",
+              "    if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+              "    pm.sendRequest(req, (err, res) => {",
+              "      if (err) console.warn('[seed]', method, path, 'error:', err.message);",
+              "      let json = null;",
+              "      try { json = res ? res.json() : null; } catch (_e) {}",
+              "      cb(err, json);",
+              "    });",
+              "  }",
+              "  function ensureUser(name, role, emailVar, passVar, tokenVar, idVar, cb) {",
+              "    if (pm.collectionVariables.get(tokenVar)) return cb();",
+              "    const email = pm.collectionVariables.get(emailVar);",
+              "    const password = pm.collectionVariables.get(passVar);",
+              "    send('POST', '/api/auth/register', null, { name, email, password, role }, () => {",
+              "      send('POST', '/api/auth/login', null, { email, password }, (err, body) => {",
+              "        if (body && body.token) {",
+              "          pm.collectionVariables.set(tokenVar, body.token);",
+              "          pm.collectionVariables.set(idVar, body.user.id);",
+              "        }",
+              "        cb();",
+              "      });",
+              "    });",
+              "  }",
+              "  function ensureAppointment(tokenVar, idVar, reason, cb) {",
+              "    if (pm.collectionVariables.get(idVar)) return cb();",
+              "    const token = pm.collectionVariables.get(tokenVar);",
+              "    const date = pm.collectionVariables.get('appointmentDate');",
+              "    send('POST', '/api/appointments', token, { doctorName: 'Dr. Postman', reason, date }, (err, body) => {",
+              "      if (body && body.id) {",
+              "        pm.collectionVariables.set(idVar, body.id);",
+              "        if (idVar === 'appointmentId') pm.collectionVariables.set('appointmentQueueNumber', body.queueNumber);",
+              "      }",
+              "      cb();",
+              "    });",
+              "  }",
+              "  function ensureServed(cb) {",
+              "    const apptId = pm.collectionVariables.get('appointmentId');",
+              "    const staffToken = pm.collectionVariables.get('staffToken');",
+              "    send('PATCH', '/api/appointments/' + apptId + '/serve', staffToken, null, () => cb());",
+              "  }",
+              "  // Idempotent: 200 if not yet cancelled, 409 if already cancelled.",
+              "  function ensureCancelledSecond(cb) {",
+              "    const secondId = pm.collectionVariables.get('secondAppointmentId');",
+              "    const p2Token = pm.collectionVariables.get('patient2Token');",
+              "    send('DELETE', '/api/appointments/' + secondId, p2Token, null, () => cb());",
+              "  }",
+              "  function ensureThirdAppointment(cb) {",
+              "    if (pm.collectionVariables.get('thirdAppointmentId')) return cb();",
+              "    const p2Token = pm.collectionVariables.get('patient2Token');",
+              "    const date = pm.collectionVariables.get('appointmentDate');",
+              "    send('POST', '/api/appointments', p2Token, { doctorName: 'Dr. Postman', reason: 'Re-booking after cancellation on the same date', date }, (err, body) => {",
+              "      if (body && body.id) pm.collectionVariables.set('thirdAppointmentId', body.id);",
+              "      cb();",
+              "    });",
+              "  }",
+              "  ensureUser('Patient One', 'patient', 'patient1Email', 'patient1Password', 'patient1Token', 'patient1Id', () => {",
+              "    ensureUser('Patient Two', 'patient', 'patient2Email', 'patient2Password', 'patient2Token', 'patient2Id', () => {",
+              "      ensureUser('Staff One', 'staff', 'staffEmail', 'staffPassword', 'staffToken', 'staffId', () => {",
+              "        ensureAppointment('patient1Token', 'appointmentId', 'Routine checkup via API tests', () => {",
+              "          ensureAppointment('patient2Token', 'secondAppointmentId', \"Second patient's checkup via API tests\", () => {",
+              "            ensureServed(() => {",
+              "              ensureCancelledSecond(() => {",
+              "                ensureThirdAppointment(() => {",
+              "                  pm.collectionVariables.set('seed_teardown_done', 'true');",
+              "                });",
+              "              });",
+              "            });",
+              "          });",
+              "        });",
+              "      });",
+              "    });",
+              "  });",
+              "})();"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// ============================================================",
+          "// COLLECTION-LEVEL PRE-REQUEST SCRIPT",
+          "// ============================================================",
+          "// This script executes before the first request of every run.",
+          "// It is guarded by the presence of 'runId' so that it runs",
+          "// exactly once per collection run, regardless of how many",
+          "// requests follow. Subsequent requests short-circuit immediately.",
+          "//",
+          "// Responsibilities:",
+          "//   1. Generate a unique run identifier (runId) from the current",
+          "//      UTC timestamp. Colons and dots are replaced with hyphens",
+          "//      so the value is safe to embed inside email local-parts.",
+          "//   2. Derive unique email addresses for patient1, patient2, and",
+          "//      staff by interpolating runId, ensuring each run operates",
+          "//      on freshly registered users and never conflicts with",
+          "//      records from prior runs.",
+          "//   3. Set deterministic passwords for each role.",
+          "//   4. Compute a future appointment date (today + 7 days, UTC)",
+          "//      in YYYY-MM-DD format and store it as 'appointmentDate'.",
+          "//   5. Log the runId to the Postman console for debugging.",
+          "// ============================================================",
+          "if (!pm.collectionVariables.get('runId')) {",
+          "  // Readable ISO stamp (':' and '.' replaced with '-' so it survives email local-part rules)",
+          "  const ts = new Date().toISOString().slice(0, 23).replace(/[:.]/g, '-');",
+          "  pm.collectionVariables.set('runId', ts);",
+          "  pm.collectionVariables.set('patient1Email', `patient1.${ts}@alustudent.com`);",
+          "  pm.collectionVariables.set('patient1Password', 'PatientPass123!');",
+          "  pm.collectionVariables.set('patient2Email', `patient2.${ts}@alustudent.com`);",
+          "  pm.collectionVariables.set('patient2Password', 'PatientPass123!');",
+          "  pm.collectionVariables.set('staffEmail', `staff.${ts}@alustudent.com`);",
+          "  pm.collectionVariables.set('staffPassword', 'StaffPass123!');",
+          "",
+          "  const d = new Date();",
+          "  d.setUTCDate(d.getUTCDate() + 7);",
+          "  pm.collectionVariables.set('appointmentDate', d.toISOString().slice(0, 10));",
+          "",
+          "  console.log('Run initialised with runId:', ts);",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "runId",
+      "value": "",
+      "description": "Unique timestamp identifier for this run (format: YYYY-MM-DDTHH-MM-SS-mmm). Set by the collection pre-request script on the first request of every run. Used as a suffix in email addresses to ensure per-run uniqueness."
+    },
+    {
+      "key": "patient1Email",
+      "value": "",
+      "description": "Unique email address for Patient One, derived from runId. Set by the collection pre-request script. Used in all authentication requests for patient1."
+    },
+    {
+      "key": "patient1Password",
+      "value": "",
+      "description": "Password for Patient One. Set to 'PatientPass123!' by the collection pre-request script."
+    },
+    {
+      "key": "patient1Token",
+      "value": "",
+      "description": "JWT bearer token for Patient One. Populated by the 'Login patient' test script in 01 - Happy Path. Required by all patient-authenticated requests for patient1."
+    },
+    {
+      "key": "patient1Id",
+      "value": "",
+      "description": "Numeric database ID for Patient One. Populated by the 'Login patient' test script in 01 - Happy Path. Used in ownership assertion tests."
+    },
+    {
+      "key": "patient2Email",
+      "value": "",
+      "description": "Unique email address for Patient Two, derived from runId. Set by the collection pre-request script."
+    },
+    {
+      "key": "patient2Password",
+      "value": "",
+      "description": "Password for Patient Two. Set to 'PatientPass123!' by the collection pre-request script."
+    },
+    {
+      "key": "patient2Token",
+      "value": "",
+      "description": "JWT bearer token for Patient Two. Populated by the 'Login patient 2' test script in 01 - Happy Path. Required for cross-patient isolation tests in 02 - Negative and 03 - Edge Cases."
+    },
+    {
+      "key": "patient2Id",
+      "value": "",
+      "description": "Numeric database ID for Patient Two. Populated by the 'Login patient 2' test script in 01 - Happy Path."
+    },
+    {
+      "key": "staffEmail",
+      "value": "",
+      "description": "Unique email address for the Staff member, derived from runId. Set by the collection pre-request script."
+    },
+    {
+      "key": "staffPassword",
+      "value": "",
+      "description": "Password for the Staff member. Set to 'StaffPass123!' by the collection pre-request script."
+    },
+    {
+      "key": "staffToken",
+      "value": "",
+      "description": "JWT bearer token for the Staff member. Populated by the 'Login staff' test script in 01 - Happy Path. Required by all staff-only endpoints (queue listing and mark served)."
+    },
+    {
+      "key": "staffId",
+      "value": "",
+      "description": "Numeric database ID for the Staff member. Populated by the 'Login staff' test script in 01 - Happy Path."
+    },
+    {
+      "key": "appointmentId",
+      "value": "",
+      "description": "ID of Patient One's primary appointment. Populated by the 'Create appointment (patient)' test script in 01 - Happy Path. Referenced extensively across all folders for filtering, serving, and edge case tests."
+    },
+    {
+      "key": "appointmentQueueNumber",
+      "value": "",
+      "description": "Queue number assigned to Patient One's primary appointment upon creation. Populated by the 'Create appointment (patient)' test script in 01 - Happy Path."
+    },
+    {
+      "key": "appointmentDate",
+      "value": "",
+      "description": "Target date for all test appointments, computed as today (UTC) plus seven days in YYYY-MM-DD format. Set by the collection pre-request script. Used in every appointment booking request body."
+    },
+    {
+      "key": "secondAppointmentId",
+      "value": "",
+      "description": "ID of Patient Two's appointment. Populated by the 'Create appointment (patient 2)' test script in 01 - Happy Path. Used in role-based filtering assertions, cross-patient access denial tests, and edge case cancellation tests."
+    },
+    {
+      "key": "thirdAppointmentId",
+      "value": "",
+      "description": "ID of Patient Two's re-booked appointment, created by the 'Re-book same day after cancellation' request in 03 - Edge Cases. Consumed and cancelled by 99 - Teardown."
+    },
+    {
+      "key": "bugsFutureAppointmentId",
+      "value": "",
+      "description": "ID of a bug-fixture appointment dated 30 days from now, created by the folder-level seed in 04 - Bugs. Consumed by B6 (mark-served on a future-dated appointment)."
+    },
+    {
+      "key": "bugsScheduledAppointmentId",
+      "value": "",
+      "description": "ID of a bug-fixture appointment owned by Patient Two and dated 14 days from now, created by the folder-level seed in 04 - Bugs. Consumed by B9 (PATCH overwriting doctorName with empty string)."
+    },
+    {
+      "key": "seed_negative_done",
+      "value": ""
+    },
+    {
+      "key": "seed_edge_done",
+      "value": ""
+    },
+    {
+      "key": "todayDate",
+      "value": ""
+    },
+    {
+      "key": "bugsB8Date",
+      "value": ""
+    },
+    {
+      "key": "bugsFutureDate",
+      "value": ""
+    },
+    {
+      "key": "bugsScheduledDate",
+      "value": ""
+    },
+    {
+      "key": "seed_bugs_done",
+      "value": ""
+    },
+    {
+      "key": "seed_teardown_done",
+      "value": ""
+    }
+  ]
+}
