@@ -63,8 +63,6 @@ npm run test:teardown     # only Teardown
 
 ### Run via Postman (GUI)
 
-**Run via Postman (GUI)**
-
 The same suite runs unchanged inside Postman's Collection Runner. Use this path if you prefer to step through requests interactively or read the inline documentation while running.
 
 - Open Postman, then click **Import** (top-left of the workspace). Drop in or browse to both files from this directory: `QueueCare.postman_collection.json` and `QueueCare.postman_environment.json`. Confirm the import.
