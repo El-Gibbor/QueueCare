@@ -30,7 +30,10 @@ The test suite assumes the QueueCare backend is reachable at `http://localhost:3
 ```sh
 # from the backend/ directory
 npm install
-npm start                          # logs: "QueueCare backend listening on port 3000"
+
+# Use either of this to start the server, it logs: "QueueCare backend listening on port 3000"
+npm run dev                       
+npm start      
 ```
 
 The backend reads `PORT` from `backend/.env` (created by copying `.env.example`) and falls back to `3000` if unset. If port 3000 is already taken on your machine the backend will exit with `EADDRINUSE`; either free the port, or set `PORT=<your-port>` in `backend/.env` to move the backend elsewhere.
@@ -40,7 +43,7 @@ Whenever the backend's port is not 3000, point Newman at the matching URL using 
 - **Permanent change -** Open `QueueCare.postman_environment.json`, locate the object in the top-level `values` array whose `"key"` is `"baseUrl"`, set its `"value"` to `http://localhost:<your-port>`, and save the file. Use the same port that is in `.env`.
 - **Per-run CLI override (one-off) -** Append `--env-var baseUrl=http://localhost:<your-port>` to the `newman` invocation. The collection's environment file is not modified.
 
-### Run the suite
+### Run via Newman (CLI)
 
 From this `API` directory (`test-automation/API`):
 
@@ -57,6 +60,18 @@ npm run test:teardown     # only Teardown
 **NB:** Each sub-folder is runnable standalone. Negative, Edge, Bugs, and Teardown carry folder-level pre-request scripts that idempotently seed the prior pipeline state (registers users, mints tokens, creates appointments, marks-served / cancels as required) when collection variables are empty. On a full run those helpers find every variable already populated by Happy Path and short-circuit, so the cost is paid only when targeting a sub-folder.
 
 `npm test` reports both passing functional assertions and the failing bug-citation assertions in the `04 - Bugs` folder. The bug-citation failures are intentional and document open defects; see the folder description after import in Postman, or the test report's 'Bugs Found' section, for the full mapping between each failed assertion and the underlying defect.
+
+### Run via Postman (GUI)
+
+**Run via Postman (GUI)**
+
+The same suite runs unchanged inside Postman's Collection Runner. Use this path if you prefer to step through requests interactively or read the inline documentation while running.
+
+- Open Postman, then click **Import** (top-left of the workspace). Drop in or browse to both files from this directory: `QueueCare.postman_collection.json` and `QueueCare.postman_environment.json`. Confirm the import.
+- Verify the import by checking the **Collections** tab in the left sidebar for **QueueCare API Tests**, and the **Environments** tab for **QueueCare API**.
+- In the top-right environment selector dropdown, switch from **No Environment** to **QueueCare API**. This activates `{{baseUrl}}`, which defaults to `http://localhost:3000`. If your backend runs on a different port or host, open the environment, update the `baseUrl` current value accordingly, and save.
+- In the sidebar, click the **QueueCare API Tests** collection name to open its overview. The top-level description contains the full run walkthrough; folder order, what each scenario class covers, how the pre-request seeding works, and how to interpret the `04 - Bugs` failures. Read this before running.
+- To run the full suite, hover over the collection name, click the thre dots **...**, and select **Run**. In the Collection Runner, keep the default request order and click **Run QueueCare API Tests**. Results appear request by request with the same assertion output Newman produces. Individual folders can be run the same way by hovering the folder instead of the collection.
 
 ## Test data isolation
 
