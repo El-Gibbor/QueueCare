@@ -1,0 +1,16 @@
+{
+  "name": "queuecare-api-tests",
+  "private": true,
+  "description": "Postman + Newman API test suite for the QueueCare backend.",
+  "scripts": {
+    "test": "newman run QueueCare.postman_collection.json -e QueueCare.postman_environment.json",
+    "test:happy": "newman run QueueCare.postman_collection.json -e QueueCare.postman_environment.json --folder \"01 - Happy Path\"",
+    "test:negative": "newman run QueueCare.postman_collection.json -e QueueCare.postman_environment.json --folder \"02 - Negative\"",
+    "test:edge": "newman run QueueCare.postman_collection.json -e QueueCare.postman_environment.json --folder \"03 - Edge Cases\"",
+    "test:bugs": "newman run QueueCare.postman_collection.json -e QueueCare.postman_environment.json --folder \"04 - Bugs\"",
+    "test:teardown": "newman run QueueCare.postman_collection.json -e QueueCare.postman_environment.json --folder \"99 - Teardown\""
+  },
+  "devDependencies": {
+    "newman": "^6.2.1"
+  }
+}
