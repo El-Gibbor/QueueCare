@@ -59,7 +59,7 @@ npm run test:teardown     # only Teardown
 
 **NB:** Each sub-folder is runnable standalone. Negative, Edge, Bugs, and Teardown carry folder-level pre-request scripts that idempotently seed the prior pipeline state (registers users, mints tokens, creates appointments, marks-served / cancels as required) when collection variables are empty. On a full run those helpers find every variable already populated by Happy Path and short-circuit, so the cost is paid only when targeting a sub-folder.
 
-`npm test` reports both passing functional assertions and the failing bug-citation assertions in the `04 - Bugs` folder. The bug-citation failures are intentional and document open defects; see the folder description after import in Postman, or the test report's 'Bugs Found' section, for the full mapping between each failed assertion and the underlying defect.
+`npm test` reports both passing functional assertions and the failing bug-citation assertions in the `04 - Bugs` folder. The bug-citation failures document open defects; see the folder description after import in Postman, or the test report's ['Bugs Found'](https://github.com/El-Gibbor/QueueCare/blob/main/TEST_REPORT.md#4-bugs-found) section, for the full mapping between each failed assertion and the underlying defect.
 
 ### Run via Postman (GUI)
 
