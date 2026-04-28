@@ -1,10 +1,7 @@
 # QueueCare API Test Suite (Postman + Newman)
+I wrote this suite end-to-end in Postman and exported it as JSON so the same suite can be executed both inside Postman (via the Collection Runner) and from the command line (via Newman). The two JSON files in this directory, `QueueCare.postman_collection.json` and `QueueCare.postman_environment.json`, are direct exports of the working collection and environment. If you prefer Postman's interactive runner, import both files into Postman and follow the import, review, and execution walkthrough in the collection's top-level description (visible in Postman after import).
 
-Tests the QueueCare backend across three scenario classes: **Happy Path**, **Negative**, and **Edge Cases**, plus a **Teardown** folder that returns the database to a clean-ish state after each run.
-
-I wrote the suite end-to-end in Postman and exported it as JSON so the same suite can be executed both inside Postman (via the Collection Runner) and from the command line (via Newman). The two JSON files in this directory, `QueueCare.postman_collection.json` and `QueueCare.postman_environment.json`, are direct exports of the working collection and environment. If you prefer Postman's interactive runner, import both files into Postman and follow the import, review, and execution walkthrough in the collection's top-level description (visible in Postman after import).
-
-A deployed copy of the QueueCare frontend is available at [https://queue-care-psi.vercel.app/](https://queue-care-psi.vercel.app/) for manual UI exploration. It is unrelated to this API suite. The Postman collection exercises HTTP endpoints directly, so `baseUrl` resolves to a backend hostname, never to a frontend URL.
+A deployed copy of the QueueCare frontend is reachable from [here](https://queue-care-psi.vercel.app/) for manual UI exploration. It is unrelated to this API suite. The Postman collection exercises HTTP endpoints directly, so `baseUrl` resolves to a backend hostname, never to a frontend URL.
 
 ## Layout
 
@@ -14,11 +11,11 @@ A deployed copy of the QueueCare frontend is available at [https://queue-care-ps
 | `QueueCare.postman_environment.json` | Environment variables (`baseUrl`) |
 | `package.json` | Newman dev dependency and run scripts |
 
-## Folder structure inside the collection
+## Tested across three scenario classes
 
 | Folder | Purpose |
 | --- | --- |
-| `01 - Happy Path` | Every endpoint with valid input and the expected 2xx outcome |
+| `01 - Happy Path` &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Every endpoint with valid input and the expected 2xx outcome |
 | `02 - Negative` | Auth failures (401), role boundaries (403), missing resources (404), validation (400) |
 | `03 - Edge Cases` | Past dates, duplicates, format errors, idempotency rules (409), re-book after cancel |
 | `04 - Bugs` | Reproducible defects in the API. Each request asserts the correct expected behaviour, so a failing assertion is a citation for an open bug |
@@ -57,7 +54,7 @@ npm run test:bugs         # only Bugs (expected to fail; cites open defects)
 npm run test:teardown     # only Teardown
 ```
 
-Each sub-folder is runnable standalone. Negative, Edge, Bugs, and Teardown carry folder-level pre-request scripts that idempotently seed the prior pipeline state (registers users, mints tokens, creates appointments, marks-served / cancels as required) when collection variables are empty. On a full run those helpers find every variable already populated by Happy Path and short-circuit, so the cost is paid only when targeting a sub-folder.
+**NB:** Each sub-folder is runnable standalone. Negative, Edge, Bugs, and Teardown carry folder-level pre-request scripts that idempotently seed the prior pipeline state (registers users, mints tokens, creates appointments, marks-served / cancels as required) when collection variables are empty. On a full run those helpers find every variable already populated by Happy Path and short-circuit, so the cost is paid only when targeting a sub-folder.
 
 `npm test` reports both passing functional assertions and the failing bug-citation assertions in the `04 - Bugs` folder. The bug-citation failures are intentional and document open defects; see the folder description after import in Postman, or the test report's 'Bugs Found' section, for the full mapping between each failed assertion and the underlying defect.
 

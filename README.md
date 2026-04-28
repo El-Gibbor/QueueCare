@@ -2,6 +2,10 @@
 
 A clinic appointment system built as a QA engineering assessment. Patients register, book and cancel appointments; staff and admin users view today's queue and mark patients as served. Queue numbers are assigned automatically per calendar date.
 
+## Test Report
+
+A concise summary of the UI and API test results and coverage for the application. View full report [here](https://github.com/El-Gibbor/QueueCare/blob/main/TEST_REPORT.md).
+
 ## Live demo
 
 The frontend is deployed [here](https://queue-care-psi.vercel.app/). Backend is not deployed (so, ensure backend is running locally on port 3000 ); the deployed bundle calls `http://localhost:3000` directly from the browser.
@@ -65,4 +69,4 @@ npm run cypress:run        # headless (terminal)
 
 ```
 
-The UI suite assumes the backend is running on port 3000 and the frontend dev server is running on port 5173. see [`test-automation/UI/README.md`](https://github.com/El-Gibbor/QueueCare/blob/main/backend/README.md) for instruction and short video demo of how to run the specs via cypress GUI
+The UI suite assumes the backend is running on port 3000 and the frontend dev server is running on port 5173. see [`test-automation/UI/README.md`](https://github.com/El-Gibbor/QueueCare/blob/main/backend/README.md) for instructions on how to run the specs via cypress GUI
