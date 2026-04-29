@@ -50,23 +50,20 @@ npm run dev
 Vite serves the application at `http://localhost:5173` and proxies `/api` calls to the backend on port 3000.
 
 ### 3. Run the API test suite
-
 ```sh
 cd test-automation/API
 npm install
 npm test
 ```
+The full suite runs in roughly four seconds and produces a pass/fail summary via Newman. Individual sub-folders can be run in isolation using the following scripts: `test:happy`, `test:negative`, `test:edge`, and `test:teardown`. When invoked standalone, folder-level pre-request scripts automatically seed the required state.
 
-The full suite runs in roughly four seconds and produces a pass/fail summary from Newman. Sub-folders (`test:happy`, `test:negative`, `test:edge`, `test:teardown`) are individually runnable; folder-level pre-request scripts seed the required state when invoked standalone.
+To fully review all test scripts, including collection-level and folder-level pre-request scripts, import the collection into Postman. See the [API README](https://github.com/El-Gibbor/QueueCare/blob/main/test-automation/API/README.md#run-via-postman-gui) for a full guide on importing the collection and its environment, and running the suite via the Postman GUI.
 
 ### 4. Run the UI test suite
-
 ```sh
 cd test-automation/UI
 npm install
-npm run cypress:open       # GUI (visual interactive runner) see Readme below
-npm run cypress:run        # headless (terminal)
-
+npm run cypress:open   # interactive GUI runner - check readme below
+npm run cypress:run    # headless (terminal)
 ```
-
-The UI suite assumes the backend is running on port 3000 and the frontend dev server is running on port 5173. see [`test-automation/UI/README.md`](https://github.com/El-Gibbor/QueueCare/blob/main/backend/README.md) for instructions on how to run the specs via cypress GUI
+Both the UI and API suites require the backend running on port 3000. The UI suite additionally requires the frontend dev server running on port 5173. See the [UI README](https://github.com/El-Gibbor/QueueCare/blob/main/test-automation/UI/README.md) for instructions on running the specs via the Cypress GUI.
